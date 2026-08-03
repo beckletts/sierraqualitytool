@@ -32,19 +32,51 @@ export interface ClaimWithSources {
   sources: SourceExcerpt[];
 }
 
-export function buildVerifyClaimsPrompt(claims: ClaimWithSources[]): string {
-  const claimsBlock = claims
-    .map((c, i) => {
-      const sourcesBlock = c.sources
-        .map((s) => {
-          if (!s.fetch_ok) {
-            return `  - ${s.domain}: FETCH FAILED (no content retrieved — do not treat this as "no match", it is missing information)`;
-          }
-          return `  - ${s.domain} (${s.url}):\n    """\n${s.excerpt}\n    """`;
-        })
-        .join("\n");
-      return `Claim ${i}: "${c.claim_text}"\nSources:\n${sourcesBlock}`;
+interface DedupedSource extends SourceExcerpt {
+  ref: string;
+}
+
+/**
+ * Multiple claims in the same transcript often resolve to the same fetched
+ * page (or the same failed fetch for a domain) — dedupe so that page's text
+ * is embedded once in the prompt, not once per claim that references it.
+ */
+export function dedupeSources(sourcesPerClaim: SourceExcerpt[][]): {
+  sources: DedupedSource[];
+  refsPerClaim: string[][];
+} {
+  const registry = new Map<string, DedupedSource>();
+  let nextRef = 1;
+  const refsPerClaim = sourcesPerClaim.map((claimSources) =>
+    claimSources.map((s) => {
+      const key = `${s.domain}::${s.fetch_ok ? s.url : "FAILED"}`;
+      let entry = registry.get(key);
+      if (!entry) {
+        entry = { ...s, ref: `S${nextRef++}` };
+        registry.set(key, entry);
+      }
+      return entry.ref;
     })
+  );
+  return { sources: Array.from(registry.values()), refsPerClaim };
+}
+
+export function buildVerifyClaimsPrompt(
+  claims: { claim_text: string }[],
+  sources: DedupedSource[],
+  refsPerClaim: string[][]
+): string {
+  const sourcesBlock = sources
+    .map((s) => {
+      if (!s.fetch_ok) {
+        return `[${s.ref}] ${s.domain}: FETCH FAILED (no content retrieved — do not treat this as "no match", it is missing information)`;
+      }
+      return `[${s.ref}] ${s.domain} (${s.url}):\n"""\n${s.excerpt}\n"""`;
+    })
+    .join("\n\n");
+
+  const claimsBlock = claims
+    .map((c, i) => `Claim ${i}: "${c.claim_text}"\nRelevant sources: ${refsPerClaim[i].join(", ")}`)
     .join("\n\n");
 
   return `You are verifying factual claims made by a Sierra support agent against three verified sources: qualifications.pearson.com, jcq.org.uk, and support.pearson.com.
@@ -59,6 +91,10 @@ export function buildVerifyClaimsPrompt(claims: ClaimWithSources[]): string {
 - confidence is your confidence in the flag_status you chose, 0-1.
 - cited_sources must list the domains you actually relied on (empty if fetch_failed).
 
+## Sources
+${sourcesBlock}
+
 ## Claims to verify
+Each claim lists which of the sources above are relevant to it — a source ref may be shared by more than one claim (a repeated ref means the same page or the same failed fetch, not a new one).
 ${claimsBlock}`;
 }

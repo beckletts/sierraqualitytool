@@ -1,5 +1,5 @@
 import { callStructured } from "./claude.js";
-import { buildScoreAndExtractPrompt, buildVerifyClaimsPrompt, type TranscriptMessage } from "./prompts.js";
+import { buildScoreAndExtractPrompt, buildVerifyClaimsPrompt, dedupeSources, type TranscriptMessage } from "./prompts.js";
 import { SCORE_AND_EXTRACT_SCHEMA, VERIFY_CLAIMS_SCHEMA } from "./schemas.js";
 import { fetchAllSources } from "../sources/fetch.js";
 import type { Competency, CompetencyLevel } from "./framework.js";
@@ -55,11 +55,10 @@ export async function analyzeTranscript(messages: TranscriptMessage[]): Promise<
   const sourcesPerClaim = await Promise.all(
     scoreAndExtract.claims.map((claim) => fetchAllSources(claim.topic_keywords))
   );
+  const { sources: dedupedSources, refsPerClaim } = dedupeSources(sourcesPerClaim);
 
   const verifyResult = await callStructured<VerifyClaimsResult>(
-    buildVerifyClaimsPrompt(
-      scoreAndExtract.claims.map((claim, i) => ({ claim_text: claim.claim_text, sources: sourcesPerClaim[i] }))
-    ),
+    buildVerifyClaimsPrompt(scoreAndExtract.claims, dedupedSources, refsPerClaim),
     VERIFY_CLAIMS_SCHEMA
   );
 
