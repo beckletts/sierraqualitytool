@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
 import type { Claim, Interaction, InterventionPriority } from "../lib/types";
 import { COMPETENCY_LABELS, interactionDate } from "../lib/types";
+import { SignOffProgress } from "../components/SignOffProgress";
 
 const PRIORITY_RANK: Record<InterventionPriority, number> = { hard_flag: 0, soft_flag: 1, none: 2 };
 const PRIORITY_LABELS: Record<InterventionPriority, string> = {
@@ -137,6 +138,8 @@ export function Queue() {
           </button>
         </nav>
       </header>
+
+      <SignOffProgress interactions={interactions} />
 
       <div className="filter-bar">
         <div className="date-presets">

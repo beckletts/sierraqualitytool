@@ -202,6 +202,63 @@ textarea {
   font-size: 0.85rem;
 }
 
+.progress-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.kpi-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 0.9rem;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.meter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.meter-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(30, 132, 73, 0.15); /* lighter step of --none-flag, so fill+track read as one ramp */
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--none-flag);
+  transition: width 0.3s ease;
+}
+
+.meter-label {
+  font-size: 0.8rem;
+  color: #666;
+  white-space: nowrap;
+}
+
 .insights-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
