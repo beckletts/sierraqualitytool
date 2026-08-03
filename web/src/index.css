@@ -1,0 +1,265 @@
+/* Placeholder palette — swap in real Pearson brand colors/logo before this goes in front of the review team. */
+:root {
+  --brand: #6a2c91;
+  --brand-dark: #4a1d68;
+  --hard-flag: #c0392b;
+  --soft-flag: #d68910;
+  --none-flag: #1e8449;
+  --border: #e0e0e0;
+  --bg: #f7f7f9;
+  --text: #222;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  background: var(--brand);
+  color: white;
+  font-size: 0.9rem;
+}
+
+button:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #999;
+}
+
+button.link-button {
+  background: none;
+  color: var(--brand);
+  padding: 0;
+  text-decoration: underline;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 100%;
+}
+
+textarea {
+  min-height: 3.5rem;
+  resize: vertical;
+}
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.login-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 320px;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.subtitle {
+  margin: 0 0 0.5rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.error-text {
+  color: var(--hard-flag);
+  font-size: 0.85rem;
+}
+
+.page-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.queue-table th,
+.queue-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: white;
+}
+
+.badge-hard_flag,
+.badge-flag-drift,
+.badge-flag-source_conflict {
+  background: var(--hard-flag);
+}
+
+.badge-soft_flag,
+.badge-flag-unverifiable,
+.badge-flag-fetch_failed {
+  background: var(--soft-flag);
+}
+
+.badge-none,
+.badge-flag-verified {
+  background: var(--none-flag);
+}
+
+.detail-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.transcript {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.transcript-line {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}
+
+.role-agent {
+  color: var(--brand-dark);
+}
+
+.competency-card,
+.claim-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  border-left: 4px solid var(--border);
+}
+
+.claim-card.flag-drift,
+.claim-card.flag-source_conflict {
+  border-left-color: var(--hard-flag);
+}
+
+.claim-card.flag-unverifiable,
+.claim-card.flag-fetch_failed {
+  border-left-color: var(--soft-flag);
+}
+
+.claim-card.flag-verified {
+  border-left-color: var(--none-flag);
+}
+
+.competency-card-header,
+.claim-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.competency-level {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.rationale {
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.claim-text {
+  font-style: italic;
+}
+
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+}
+
+.source-failed {
+  color: #999;
+}
+
+.edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.confidence {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.sign-off-panel {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.sign-off-panel.signed-off {
+  color: var(--none-flag);
+  font-weight: 600;
+}

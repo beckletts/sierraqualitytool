@@ -1,0 +1,13 @@
+{
+  "sierra_conversation_id": "fixture-0001",
+  "messages": [
+    { "role": "customer", "text": "Hi, my daughter is doing her GCSEs this year. Can she get extra time in her exams if she has dyslexia?" },
+    { "role": "agent", "text": "Yes, that's called an Access Arrangement. If she has a diagnosed learning difficulty like dyslexia, her school's SENCO can apply for up to 50% extra time. This needs to be approved by JCQ before the exam series." },
+    { "role": "customer", "text": "Does the school need any evidence for that?" },
+    { "role": "agent", "text": "Yes, they'll need an up-to-date assessment report, usually from an educational psychologist, showing a substantial and long-term difficulty. The school keeps this on file - they don't need to send it to us unless we ask." },
+    { "role": "customer", "text": "Great, and if she's not happy with a grade, can she ask for a re-mark?" },
+    { "role": "agent", "text": "Yes, that's a Review of Marking. Schools have to submit priority reviews within a few days of results day if she wants it back before university offers are confirmed, so I'd get that request in fast." },
+    { "role": "customer", "text": "Thanks, that's really helpful." },
+    { "role": "agent", "text": "No problem, glad I could help. Is there anything else I can do for you today?" }
+  ]
+}
