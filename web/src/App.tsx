@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { Login } from "./pages/Login";
 import { Queue } from "./pages/Queue";
 import { TranscriptDetail } from "./pages/TranscriptDetail";
+import { Insights } from "./pages/Insights";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -29,6 +30,14 @@ export default function App() {
           element={
             <RequireAuth>
               <TranscriptDetail />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/insights"
+          element={
+            <RequireAuth>
+              <Insights />
             </RequireAuth>
           }
         />

@@ -58,7 +58,12 @@ async function runLive() {
     count += 1;
     console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
     const analysis = await analyzeTranscript(conversation.messages);
-    const result = await writeInteraction(conversation.id, conversation.messages, analysis);
+    const result = await writeInteraction(conversation.id, conversation.messages, analysis, {
+      startTimestamp: conversation.startTimestamp,
+      tags: conversation.tags,
+      customFields: conversation.customFields,
+      device: conversation.device,
+    });
     if (result.skipped) {
       console.log(`  already present, skipped`);
     } else {

@@ -26,12 +26,21 @@ export interface Interaction {
   sierra_conversation_id: string;
   transcript: TranscriptMessage[];
   pulled_at: string;
+  conversation_started_at: string | null;
+  tags: string[];
+  custom_fields: Record<string, unknown>;
+  device: string | null;
   competency_scores: Record<Competency, CompetencyScore>;
   intervention_priority: InterventionPriority;
   status: InteractionStatus;
   signed_off_at: string | null;
   signed_off_by: string | null;
   created_at: string;
+}
+
+/** conversation_started_at is null for interactions written before that column existed. */
+export function interactionDate(interaction: Interaction): string {
+  return interaction.conversation_started_at ?? interaction.pulled_at;
 }
 
 export interface Claim {

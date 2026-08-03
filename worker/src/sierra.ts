@@ -3,12 +3,20 @@ import type { TranscriptMessage } from "./analysis/prompts.js";
 export interface SierraConversation {
   id: string;
   messages: TranscriptMessage[];
+  startTimestamp: number;
+  tags: string[];
+  customFields: Record<string, unknown>;
+  device: string | null;
 }
 
 interface SierraExportResponse {
   conversations: {
     id: string;
     messages: { author: "USER" | "AGENT"; text: string }[];
+    start_timestamp: number;
+    tags?: string[];
+    custom_fields?: Record<string, unknown>;
+    device?: string;
   }[];
   next_cursor?: string | null;
 }
@@ -67,6 +75,10 @@ export async function* pullConversations(options: {
           role: m.author === "AGENT" ? "agent" : "customer",
           text: m.text,
         })),
+        startTimestamp: conversation.start_timestamp,
+        tags: conversation.tags ?? [],
+        customFields: conversation.custom_fields ?? {},
+        device: conversation.device ?? null,
       };
       remaining -= 1;
       if (remaining <= 0) return;

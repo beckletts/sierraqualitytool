@@ -2,6 +2,13 @@ import { getSupabase } from "./client.js";
 import type { AnalysisResult } from "../analysis/pipeline.js";
 import type { TranscriptMessage } from "../analysis/prompts.js";
 
+export interface ConversationMetadata {
+  startTimestamp?: number;
+  tags?: string[];
+  customFields?: Record<string, unknown>;
+  device?: string | null;
+}
+
 /**
  * Writes an interaction + its claims. Dedupes on sierra_conversation_id so
  * reruns of the worker are idempotent — a conversation already present is
@@ -10,7 +17,8 @@ import type { TranscriptMessage } from "../analysis/prompts.js";
 export async function writeInteraction(
   sierraConversationId: string,
   transcript: TranscriptMessage[],
-  analysis: AnalysisResult
+  analysis: AnalysisResult,
+  metadata: ConversationMetadata = {}
 ): Promise<{ skipped: boolean }> {
   const supabase = getSupabase();
 
@@ -30,6 +38,10 @@ export async function writeInteraction(
       competency_scores: analysis.competency_scores,
       intervention_priority: analysis.intervention_priority,
       status: "pending",
+      conversation_started_at: metadata.startTimestamp ? new Date(metadata.startTimestamp * 1000).toISOString() : null,
+      tags: metadata.tags ?? [],
+      custom_fields: metadata.customFields ?? {},
+      device: metadata.device ?? null,
     })
     .select("id")
     .single();
