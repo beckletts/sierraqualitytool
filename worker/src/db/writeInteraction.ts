@@ -63,3 +63,31 @@ export async function writeInteraction(
 
   return { skipped: false };
 }
+
+/**
+ * Updates conversation_started_at/tags/custom_fields/device on an existing
+ * row without touching competency_scores or claims — for backfilling
+ * conversations pulled before those columns existed, with no re-analysis
+ * and no Claude calls. No-ops (returns updated: false) if the conversation
+ * isn't in Supabase yet — that's what a normal pull is for.
+ */
+export async function backfillMetadata(
+  sierraConversationId: string,
+  metadata: ConversationMetadata
+): Promise<{ updated: boolean }> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("interactions")
+    .update({
+      conversation_started_at: metadata.startTimestamp ? new Date(metadata.startTimestamp * 1000).toISOString() : null,
+      tags: metadata.tags ?? [],
+      custom_fields: metadata.customFields ?? {},
+      device: metadata.device ?? null,
+    })
+    .eq("sierra_conversation_id", sierraConversationId)
+    .select("id");
+  if (error) throw error;
+
+  return { updated: (data?.length ?? 0) > 0 };
+}

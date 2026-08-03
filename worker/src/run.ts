@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { analyzeTranscript } from "./analysis/pipeline.js";
-import { writeInteraction } from "./db/writeInteraction.js";
+import { backfillMetadata, writeInteraction } from "./db/writeInteraction.js";
 import { pullConversations } from "./sierra.js";
 
 /**
@@ -22,6 +22,7 @@ function parseTimestamp(value: string, endOfDay: boolean): number {
 
 const args = process.argv.slice(2);
 const useFixture = args.includes("--fixture");
+const backfillOnly = args.includes("--backfill-metadata");
 const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : 10;
 const startArg = args.find((a) => a.startsWith("--start="));
@@ -50,12 +51,25 @@ async function runLive() {
   const endEpochSeconds = parseTimestamp(endArg.split("=")[1], true);
 
   console.log(
-    `Pulling up to ${limit} conversations from Sierra, ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}...`
+    `Pulling up to ${limit} conversations from Sierra, ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}${backfillOnly ? " (backfill-metadata mode — no Claude calls, no new rows)" : ""}...`
   );
   let count = 0;
   let written = 0;
   for await (const conversation of pullConversations({ limit, startEpochSeconds, endEpochSeconds })) {
     count += 1;
+
+    if (backfillOnly) {
+      const result = await backfillMetadata(conversation.id, {
+        startTimestamp: conversation.startTimestamp,
+        tags: conversation.tags,
+        customFields: conversation.customFields,
+        device: conversation.device,
+      });
+      console.log(`[${count}/${limit}] ${conversation.id}: ${result.updated ? "metadata backfilled" : "not in Supabase, skipped"}`);
+      if (result.updated) written += 1;
+      continue;
+    }
+
     console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
     const analysis = await analyzeTranscript(conversation.messages);
     const result = await writeInteraction(conversation.id, conversation.messages, analysis, {
@@ -71,7 +85,11 @@ async function runLive() {
       console.log(`  written (${analysis.intervention_priority}, ${analysis.claims.length} claims)`);
     }
   }
-  console.log(`Done. Pulled ${count}, wrote ${written} new interaction(s).`);
+  console.log(
+    backfillOnly
+      ? `Done. Pulled ${count}, backfilled metadata on ${written} existing row(s).`
+      : `Done. Pulled ${count}, wrote ${written} new interaction(s).`
+  );
 }
 
 (useFixture ? runFixture() : runLive()).catch((err) => {
