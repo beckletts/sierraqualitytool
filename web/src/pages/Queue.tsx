@@ -33,6 +33,8 @@ interface SearchableClaims {
   text: string;
 }
 
+const TAG_PREVIEW_COUNT = 3;
+
 function toDayInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -46,6 +48,16 @@ export function Queue() {
   const [customStart, setCustomStart] = useState(() => toDayInputValue(new Date(Date.now() - 7 * 86_400_000)));
   const [customEnd, setCustomEnd] = useState(() => toDayInputValue(new Date()));
   const [search, setSearch] = useState("");
+  const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
+
+  function toggleTags(id: string) {
+    setExpandedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     void loadInteractions();
@@ -174,7 +186,6 @@ export function Queue() {
           <tr>
             <th>Priority</th>
             <th>Conversation</th>
-            <th>Date</th>
             <th>Tags</th>
             {Object.values(COMPETENCY_LABELS).map((label) => (
               <th key={label}>{label}</th>
@@ -186,6 +197,10 @@ export function Queue() {
         <tbody>
           {sorted.map((interaction) => {
             const counts = claimsByInteraction[interaction.id]?.counts ?? { hard: 0, soft: 0 };
+            const tags = interaction.tags ?? [];
+            const isExpanded = expandedTags.has(interaction.id);
+            const visibleTags = isExpanded ? tags : tags.slice(0, TAG_PREVIEW_COUNT);
+            const hiddenCount = tags.length - visibleTags.length;
             return (
               <tr key={interaction.id} className={`priority-${interaction.intervention_priority}`}>
                 <td>
@@ -194,15 +209,25 @@ export function Queue() {
                   </span>
                 </td>
                 <td>
-                  <Link to={`/interactions/${interaction.id}`}>{interaction.sierra_conversation_id}</Link>
+                  <Link to={`/interactions/${interaction.id}`}>{new Date(interactionDate(interaction)).toLocaleString()}</Link>
+                  <div className="conversation-id">{interaction.sierra_conversation_id}</div>
                 </td>
-                <td>{new Date(interactionDate(interaction)).toLocaleString()}</td>
-                <td>
-                  {(interaction.tags ?? []).map((tag) => (
+                <td className="tags-cell">
+                  {visibleTags.map((tag) => (
                     <span key={tag} className="tag-chip">
                       {tag}
                     </span>
                   ))}
+                  {hiddenCount > 0 && (
+                    <button className="tag-toggle" onClick={() => toggleTags(interaction.id)}>
+                      +{hiddenCount} more
+                    </button>
+                  )}
+                  {isExpanded && tags.length > TAG_PREVIEW_COUNT && (
+                    <button className="tag-toggle" onClick={() => toggleTags(interaction.id)}>
+                      Show less
+                    </button>
+                  )}
                 </td>
                 {(Object.keys(COMPETENCY_LABELS) as (keyof typeof COMPETENCY_LABELS)[]).map((key) => (
                   <td key={key}>{interaction.competency_scores?.[key]?.level ?? "-"}</td>

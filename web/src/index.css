@@ -197,6 +197,28 @@ textarea {
   margin: 0.1rem;
 }
 
+.tags-cell {
+  max-width: 280px;
+}
+
+.tag-toggle {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: var(--brand);
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  margin: 0.1rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.conversation-id {
+  font-size: 0.7rem;
+  color: #999;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+
 .muted-note {
   color: #666;
   font-size: 0.85rem;
