@@ -120,6 +120,20 @@ textarea {
   gap: 1rem;
 }
 
+.detail-heading {
+  text-align: right;
+}
+
+.detail-heading h1 {
+  margin: 0;
+}
+
+.detail-date {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 .header-nav a {
   color: var(--brand);
   font-size: 0.9rem;

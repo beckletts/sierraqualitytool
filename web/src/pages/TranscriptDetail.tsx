@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
 import { recordReview } from "../lib/reviews";
-import { COMPETENCY_LABELS } from "../lib/types";
+import { COMPETENCY_LABELS, interactionDate } from "../lib/types";
 import type { Claim, Competency, CompetencyLevel, FlagStatus, Interaction } from "../lib/types";
 import { CompetencyScoreCard } from "../components/CompetencyScoreCard";
 import { ClaimFlagRow } from "../components/ClaimFlagRow";
@@ -134,7 +134,10 @@ export function TranscriptDetail() {
     <div className="page-shell">
       <header className="page-header">
         <Link to="/">&larr; Back to queue</Link>
-        <h1>{interaction.sierra_conversation_id}</h1>
+        <div className="detail-heading">
+          <h1>{interaction.sierra_conversation_id}</h1>
+          <span className="detail-date">{new Date(interactionDate(interaction)).toLocaleString()}</span>
+        </div>
       </header>
 
       <section className="detail-columns">
