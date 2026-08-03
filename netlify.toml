@@ -1,0 +1,15 @@
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Client-side routing (react-router-dom) — without this, a direct link or
+# refresh to a route like /interactions/:id 404s because no such file exists
+# on the static host.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
