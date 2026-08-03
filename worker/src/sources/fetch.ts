@@ -51,11 +51,32 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function extractMainText(html: string): string {
+/**
+ * A flat first-N-chars slice often grabs boilerplate (breadcrumbs, cookie
+ * notices, related-links lists) ahead of the actual relevant paragraph.
+ * If a topic keyword literally appears in the page, center the window on
+ * its first occurrence instead. Falls back to the start of the page when
+ * no keyword matches (e.g. paraphrased wording) — same as before.
+ */
+function findWindowStart(text: string, topicKeywords: string[]): number {
+  if (topicKeywords.length === 0) return 0;
+  const lower = text.toLowerCase();
+  let earliestMatch = -1;
+  for (const keyword of topicKeywords) {
+    const idx = lower.indexOf(keyword.toLowerCase());
+    if (idx !== -1 && (earliestMatch === -1 || idx < earliestMatch)) earliestMatch = idx;
+  }
+  if (earliestMatch === -1) return 0;
+  const leadIn = Math.floor(MAX_EXCERPT_CHARS * 0.25);
+  return Math.max(0, earliestMatch - leadIn);
+}
+
+function extractMainText(html: string, topicKeywords: string[]): string {
   const $ = cheerio.load(html);
   $("script, style, nav, footer, header, noscript").remove();
   const text = $("body").text().replace(/\s+/g, " ").trim();
-  return text.slice(0, MAX_EXCERPT_CHARS);
+  const start = findWindowStart(text, topicKeywords);
+  return text.slice(start, start + MAX_EXCERPT_CHARS);
 }
 
 /** Best-effort: pull candidate result links out of a search results page. Unverified against real markup (see domains.ts). */
@@ -93,7 +114,7 @@ export async function fetchSourceExcerpt(source: SourceDomain, topicKeywords: st
   for (const url of candidates) {
     const html = await fetchWithRetry(url);
     if (html) {
-      return { domain: source.domain, url, excerpt: extractMainText(html), fetch_ok: true };
+      return { domain: source.domain, url, excerpt: extractMainText(html, topicKeywords), fetch_ok: true };
     }
   }
 

@@ -42,29 +42,53 @@ function derivePriority(claims: AnalyzedClaim[]): AnalysisResult["intervention_p
   return "none";
 }
 
+function normalizeClaimText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s%]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Collapses claims that are verbatim (modulo case/punctuation) restatements
+ * of each other — agents often repeat the same fact within a transcript.
+ * Deliberately exact-match only: a fuzzy similarity threshold risks merging
+ * two claims that read alike but disagree on the substance (e.g. "up to 50%"
+ * vs "up to 25%"), which would silently drop a claim that needed its own
+ * verification.
+ */
+function dedupeClaims<T extends { claim_text: string }>(claims: T[]): T[] {
+  const seen = new Map<string, T>();
+  for (const claim of claims) {
+    const key = normalizeClaimText(claim.claim_text);
+    if (!seen.has(key)) seen.set(key, claim);
+  }
+  return Array.from(seen.values());
+}
+
 export async function analyzeTranscript(messages: TranscriptMessage[]): Promise<AnalysisResult> {
   const scoreAndExtract = await callStructured<ScoreAndExtractResult>(
     buildScoreAndExtractPrompt(messages),
     SCORE_AND_EXTRACT_SCHEMA
   );
+  const claimsToVerify = dedupeClaims(scoreAndExtract.claims);
 
-  if (scoreAndExtract.claims.length === 0) {
+  if (claimsToVerify.length === 0) {
     return { competency_scores: scoreAndExtract.competency_scores, claims: [], intervention_priority: "none" };
   }
 
-  const sourcesPerClaim = await Promise.all(
-    scoreAndExtract.claims.map((claim) => fetchAllSources(claim.topic_keywords))
-  );
+  const sourcesPerClaim = await Promise.all(claimsToVerify.map((claim) => fetchAllSources(claim.topic_keywords)));
   const { sources: dedupedSources, refsPerClaim } = dedupeSources(sourcesPerClaim);
 
   const verifyResult = await callStructured<VerifyClaimsResult>(
-    buildVerifyClaimsPrompt(scoreAndExtract.claims, dedupedSources, refsPerClaim),
+    buildVerifyClaimsPrompt(claimsToVerify, dedupedSources, refsPerClaim),
     VERIFY_CLAIMS_SCHEMA
   );
 
   const verdictByIndex = new Map(verifyResult.verdicts.map((v) => [v.claim_index, v]));
 
-  const claims: AnalyzedClaim[] = scoreAndExtract.claims.map((claim, i) => {
+  const claims: AnalyzedClaim[] = claimsToVerify.map((claim, i) => {
     const verdict = verdictByIndex.get(i);
     if (!verdict) {
       return {
