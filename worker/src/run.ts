@@ -6,14 +6,26 @@ import { analyzeTranscript } from "./analysis/pipeline.js";
 import { writeInteraction } from "./db/writeInteraction.js";
 import { pullConversations } from "./sierra.js";
 
+/**
+ * Accepts either raw Unix epoch seconds or a plain date (e.g. "2026-07-29") —
+ * the Admin API only takes epoch seconds. A bare date used as `end` is bumped
+ * to the start of the following day so "29th July to 3rd August" includes all
+ * of the 3rd, not just its first instant.
+ */
+function parseTimestamp(value: string, endOfDay: boolean): number {
+  if (/^\d+$/.test(value)) return Number(value);
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) throw new Error(`Could not parse timestamp: "${value}"`);
+  return Math.floor((isDateOnly && endOfDay ? ms + 24 * 60 * 60 * 1000 : ms) / 1000);
+}
+
 const args = process.argv.slice(2);
 const useFixture = args.includes("--fixture");
 const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : 10;
 const startArg = args.find((a) => a.startsWith("--start="));
 const endArg = args.find((a) => a.startsWith("--end="));
-const start = startArg ? startArg.split("=")[1] : undefined;
-const end = endArg ? endArg.split("=")[1] : undefined;
 
 async function runFixture() {
   const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "sample-transcript.json");
@@ -31,12 +43,18 @@ async function runFixture() {
 }
 
 async function runLive() {
+  if (!startArg || !endArg) {
+    throw new Error("Sierra's export endpoint requires both --start= and --end= (a date like 2026-07-29 or epoch seconds)");
+  }
+  const startEpochSeconds = parseTimestamp(startArg.split("=")[1], false);
+  const endEpochSeconds = parseTimestamp(endArg.split("=")[1], true);
+
   console.log(
-    `Pulling up to ${limit} conversations from Sierra${start ? ` from ${start}` : ""}${end ? ` to ${end}` : ""}...`
+    `Pulling up to ${limit} conversations from Sierra, ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}...`
   );
   let count = 0;
   let written = 0;
-  for await (const conversation of pullConversations({ limit, start, end })) {
+  for await (const conversation of pullConversations({ limit, startEpochSeconds, endEpochSeconds })) {
     count += 1;
     console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
     const analysis = await analyzeTranscript(conversation.messages);

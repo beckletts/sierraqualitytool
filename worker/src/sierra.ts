@@ -6,11 +6,15 @@ export interface SierraConversation {
 }
 
 interface SierraExportResponse {
-  conversations: { id: string; messages: { role: string; text: string }[] }[];
-  next_start?: string | null;
+  conversations: {
+    id: string;
+    messages: { author: "USER" | "AGENT"; text: string }[];
+  }[];
+  next_cursor?: string | null;
 }
 
 const MAX_RETRIES = 5;
+const MAX_PAGE_LIMIT = 500;
 
 function backoffMs(attempt: number): number {
   const base = 1000 * 2 ** attempt;
@@ -22,29 +26,36 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Pulls redacted conversations from Sierra's Admin API `conversations/export`
- * endpoint (Read scope), paginating via start/end/limit and backing off with
- * jitter on 429. Kept generic since the exact response shape is unverified
- * without live credentials — adjust field names once tested against the real API.
+ * Pulls redacted conversations from Sierra's Admin API bulk conversation export
+ * endpoint: GET /admin/1/orgs/{org_id}/agents/{agent_id}/conversations/export
+ * Paginates via the `cursor` field returned as `next_cursor`, and backs off with
+ * jitter on 429. `start`/`end` are Unix epoch seconds (the window is fixed for
+ * the whole pull; only `cursor` advances between pages).
  */
 export async function* pullConversations(options: {
   limit: number;
-  start?: string;
-  end?: string;
+  startEpochSeconds: number;
+  endEpochSeconds: number;
 }): AsyncGenerator<SierraConversation> {
   const baseUrl = process.env.SIERRA_API_BASE_URL;
   const token = process.env.SIERRA_API_TOKEN;
+  const orgId = process.env.SIERRA_ORG_ID;
+  const agentId = process.env.SIERRA_AGENT_ID;
   if (!baseUrl) throw new Error("SIERRA_API_BASE_URL is not set");
   if (!token) throw new Error("SIERRA_API_TOKEN is not set");
+  if (!orgId) throw new Error("SIERRA_ORG_ID is not set");
+  if (!agentId) throw new Error("SIERRA_AGENT_ID is not set");
 
-  let cursor: string | undefined = options.start;
+  let cursor: string | undefined;
   let remaining = options.limit;
 
   while (remaining > 0) {
-    const url = new URL("/v1/conversations/export", baseUrl);
-    url.searchParams.set("limit", String(Math.min(remaining, 100)));
-    if (cursor) url.searchParams.set("start", cursor);
-    if (options.end) url.searchParams.set("end", options.end);
+    const url = new URL(`/admin/1/orgs/${orgId}/agents/${agentId}/conversations/export`, baseUrl);
+    url.searchParams.set("start", String(options.startEpochSeconds));
+    url.searchParams.set("end", String(options.endEpochSeconds));
+    url.searchParams.set("limit", String(Math.min(remaining, MAX_PAGE_LIMIT)));
+    url.searchParams.set("redacted", "true");
+    if (cursor) url.searchParams.set("cursor", cursor);
 
     const page = await fetchPageWithBackoff(url.toString(), token);
     if (!page || page.conversations.length === 0) return;
@@ -52,14 +63,17 @@ export async function* pullConversations(options: {
     for (const conversation of page.conversations) {
       yield {
         id: conversation.id,
-        messages: conversation.messages.map((m) => ({ role: m.role, text: m.text })),
+        messages: conversation.messages.map((m) => ({
+          role: m.author === "AGENT" ? "agent" : "customer",
+          text: m.text,
+        })),
       };
       remaining -= 1;
       if (remaining <= 0) return;
     }
 
-    if (!page.next_start) return;
-    cursor = page.next_start;
+    if (!page.next_cursor) return;
+    cursor = page.next_cursor;
   }
 }
 
