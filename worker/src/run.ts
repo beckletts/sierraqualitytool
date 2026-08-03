@@ -10,6 +10,10 @@ const args = process.argv.slice(2);
 const useFixture = args.includes("--fixture");
 const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : 10;
+const startArg = args.find((a) => a.startsWith("--start="));
+const endArg = args.find((a) => a.startsWith("--end="));
+const start = startArg ? startArg.split("=")[1] : undefined;
+const end = endArg ? endArg.split("=")[1] : undefined;
 
 async function runFixture() {
   const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "sample-transcript.json");
@@ -27,10 +31,12 @@ async function runFixture() {
 }
 
 async function runLive() {
-  console.log(`Pulling up to ${limit} conversations from Sierra...`);
+  console.log(
+    `Pulling up to ${limit} conversations from Sierra${start ? ` from ${start}` : ""}${end ? ` to ${end}` : ""}...`
+  );
   let count = 0;
   let written = 0;
-  for await (const conversation of pullConversations({ limit })) {
+  for await (const conversation of pullConversations({ limit, start, end })) {
     count += 1;
     console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
     const analysis = await analyzeTranscript(conversation.messages);
