@@ -3,6 +3,12 @@ import { buildScoreAndExtractPrompt, buildVerifyClaimsPrompt, dedupeSources, typ
 import { SCORE_AND_EXTRACT_SCHEMA, VERIFY_CLAIMS_SCHEMA } from "./schemas.js";
 import { fetchAllSources } from "../sources/fetch.js";
 import type { Competency, CompetencyLevel } from "./framework.js";
+import type { SourceDomain } from "../sources/domains.js";
+
+export interface AnalysisConfig {
+  frameworkText: string;
+  sources: SourceDomain[];
+}
 
 interface ScoreAndExtractResult {
   competency_scores: Record<Competency, { level: CompetencyLevel; rationale: string }>;
@@ -67,9 +73,9 @@ function dedupeClaims<T extends { claim_text: string }>(claims: T[]): T[] {
   return Array.from(seen.values());
 }
 
-export async function analyzeTranscript(messages: TranscriptMessage[]): Promise<AnalysisResult> {
+export async function analyzeTranscript(messages: TranscriptMessage[], config: AnalysisConfig): Promise<AnalysisResult> {
   const scoreAndExtract = await callStructured<ScoreAndExtractResult>(
-    buildScoreAndExtractPrompt(messages),
+    buildScoreAndExtractPrompt(messages, config.frameworkText),
     SCORE_AND_EXTRACT_SCHEMA
   );
   const claimsToVerify = dedupeClaims(scoreAndExtract.claims);
@@ -78,7 +84,9 @@ export async function analyzeTranscript(messages: TranscriptMessage[]): Promise<
     return { competency_scores: scoreAndExtract.competency_scores, claims: [], intervention_priority: "none" };
   }
 
-  const sourcesPerClaim = await Promise.all(claimsToVerify.map((claim) => fetchAllSources(claim.topic_keywords)));
+  const sourcesPerClaim = await Promise.all(
+    claimsToVerify.map((claim) => fetchAllSources(claim.topic_keywords, config.sources))
+  );
   const { sources: dedupedSources, refsPerClaim } = dedupeSources(sourcesPerClaim);
 
   const verifyResult = await callStructured<VerifyClaimsResult>(

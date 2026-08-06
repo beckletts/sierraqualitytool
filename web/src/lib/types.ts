@@ -86,3 +86,29 @@ export const FLAG_LABELS: Record<FlagStatus, string> = {
   source_conflict: "Source conflict",
   fetch_failed: "Fetch failed",
 };
+
+export interface KnowledgeSource {
+  id: string;
+  domain: string;
+  base_url: string;
+  search_url_template: string;
+  seed_urls: string[];
+  enabled: boolean;
+  updated_at: string;
+}
+
+export interface GuidelineRow {
+  competency: Competency;
+  level: CompetencyLevel;
+  descriptor: string;
+  updated_at: string;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+  banned_until: string | null;
+}

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../lib/auth";
 import type { Claim, Interaction, InterventionPriority } from "../lib/types";
 import { COMPETENCY_LABELS, interactionDate } from "../lib/types";
 import { SignOffProgress } from "../components/SignOffProgress";
+import { AppNav } from "../components/AppNav";
 
 const PRIORITY_RANK: Record<InterventionPriority, number> = { hard_flag: 0, soft_flag: 1, none: 2 };
 const PRIORITY_LABELS: Record<InterventionPriority, string> = {
@@ -40,7 +40,6 @@ function toDayInputValue(date: Date): string {
 }
 
 export function Queue() {
-  const { signOut } = useAuth();
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [claimsByInteraction, setClaimsByInteraction] = useState<Record<string, SearchableClaims>>({});
   const [loading, setLoading] = useState(true);
@@ -143,12 +142,7 @@ export function Queue() {
     <div className="page-shell">
       <header className="page-header">
         <h1>Review queue</h1>
-        <nav className="header-nav">
-          <Link to="/insights">Insights</Link>
-          <button className="link-button" onClick={() => void signOut()}>
-            Sign out
-          </button>
-        </nav>
+        <AppNav />
       </header>
 
       <SignOffProgress interactions={interactions} />

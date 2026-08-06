@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { SOURCE_DOMAINS, type SourceDomain } from "./domains.js";
+import { buildSearchUrl, type SourceDomain } from "./domains.js";
 import type { SourceExcerpt } from "../analysis/prompts.js";
 
 const BROWSER_HEADERS = {
@@ -100,7 +100,7 @@ function extractCandidateLinks(html: string, baseUrl: string): string[] {
 }
 
 async function resolveCandidateUrls(source: SourceDomain, query: string): Promise<string[]> {
-  const searchHtml = await fetchWithRetry(source.searchUrl(query));
+  const searchHtml = await fetchWithRetry(buildSearchUrl(source, query));
   const found = searchHtml ? extractCandidateLinks(searchHtml, source.baseUrl) : [];
   if (found.length > 0) return found;
   return source.seedUrls;
@@ -121,7 +121,7 @@ export async function fetchSourceExcerpt(source: SourceDomain, topicKeywords: st
   return { domain: source.domain, url: null, excerpt: null, fetch_ok: false };
 }
 
-/** Fetches all three verified sources for a single claim, in parallel. */
-export async function fetchAllSources(topicKeywords: string[]): Promise<SourceExcerpt[]> {
-  return Promise.all(SOURCE_DOMAINS.map((source) => fetchSourceExcerpt(source, topicKeywords)));
+/** Fetches all enabled verified sources for a single claim, in parallel. */
+export async function fetchAllSources(topicKeywords: string[], sources: SourceDomain[]): Promise<SourceExcerpt[]> {
+  return Promise.all(sources.map((source) => fetchSourceExcerpt(source, topicKeywords)));
 }

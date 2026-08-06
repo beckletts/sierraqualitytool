@@ -1,11 +1,9 @@
-import { renderFrameworkForPrompt } from "./framework.js";
-
 export interface TranscriptMessage {
   role: string;
   text: string;
 }
 
-export function buildScoreAndExtractPrompt(messages: TranscriptMessage[]): string {
+export function buildScoreAndExtractPrompt(messages: TranscriptMessage[], frameworkText: string): string {
   const transcriptText = messages.map((m) => `${m.role}: ${m.text}`).join("\n");
   return `You are assessing a redacted customer service transcript from Sierra (Pearson's CSX support agent) before go-live.
 
@@ -14,7 +12,7 @@ export function buildScoreAndExtractPrompt(messages: TranscriptMessage[]): strin
 2. Extract every factual claim the agent made to the customer that could be checked against a verified external source (qualification rules, deadlines, policies, processes). Skip small talk, opinions, and claims with no checkable factual content. If there are no checkable claims, return an empty list.
 
 ## Competency framework
-${renderFrameworkForPrompt()}
+${frameworkText}
 
 ## Transcript
 ${transcriptText}`;
@@ -79,10 +77,12 @@ export function buildVerifyClaimsPrompt(
     .map((c, i) => `Claim ${i}: "${c.claim_text}"\nRelevant sources: ${refsPerClaim[i].join(", ")}`)
     .join("\n\n");
 
-  return `You are verifying factual claims made by a Sierra support agent against three verified sources: qualifications.pearson.com, jcq.org.uk, and support.pearson.com.
+  const domainList = Array.from(new Set(sources.map((s) => s.domain))).join(", ");
+
+  return `You are verifying factual claims made by a Sierra support agent against these verified sources: ${domainList}.
 
 ## Rules
-- None of the three sources is automatically "ground truth" — jcq.org.uk is not Pearson-managed and can legitimately disagree with Pearson's own pages.
+- None of these sources is automatically "ground truth" on its own — e.g. jcq.org.uk is not Pearson-managed and can legitimately disagree with Pearson's own pages.
 - If the sources that successfully returned content agree with the claim: "verified".
 - If the sources that successfully returned content contradict the claim: "drift" (hard flag).
 - If two or more sources that successfully returned content disagree with EACH OTHER on the same point: "source_conflict" (hard flag), and cite every conflicting source.

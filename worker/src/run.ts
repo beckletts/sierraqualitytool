@@ -2,9 +2,15 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { analyzeTranscript } from "./analysis/pipeline.js";
+import { analyzeTranscript, type AnalysisConfig } from "./analysis/pipeline.js";
 import { backfillMetadata, writeInteraction } from "./db/writeInteraction.js";
 import { pullConversations } from "./sierra.js";
+import { loadFrameworkText, loadSourceDomains } from "./config/loadConfig.js";
+
+async function loadAnalysisConfig(): Promise<AnalysisConfig> {
+  const [frameworkText, sources] = await Promise.all([loadFrameworkText(), loadSourceDomains()]);
+  return { frameworkText, sources };
+}
 
 /**
  * Accepts either raw Unix epoch seconds or a plain date (e.g. "2026-07-29") —
@@ -31,16 +37,14 @@ const endArg = args.find((a) => a.startsWith("--end="));
 async function runFixture() {
   const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "sample-transcript.json");
   const fixture = JSON.parse(readFileSync(fixturePath, "utf-8"));
+  console.log("Loading framework + knowledge sources from Supabase...");
+  const config = await loadAnalysisConfig();
   console.log(`Analyzing fixture transcript ${fixture.sierra_conversation_id}...`);
-  const analysis = await analyzeTranscript(fixture.messages);
+  const analysis = await analyzeTranscript(fixture.messages, config);
   console.log(JSON.stringify(analysis, null, 2));
 
-  if (process.env.SUPABASE_URL) {
-    const result = await writeInteraction(fixture.sierra_conversation_id, fixture.messages, analysis);
-    console.log(result.skipped ? "Already in Supabase, skipped." : "Written to Supabase.");
-  } else {
-    console.log("SUPABASE_URL not set — skipping write, printed analysis only.");
-  }
+  const result = await writeInteraction(fixture.sierra_conversation_id, fixture.messages, analysis);
+  console.log(result.skipped ? "Already in Supabase, skipped." : "Written to Supabase.");
 }
 
 async function runLive() {
@@ -53,6 +57,13 @@ async function runLive() {
   console.log(
     `Pulling up to ${limit} conversations from Sierra, ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}${backfillOnly ? " (backfill-metadata mode — no Claude calls, no new rows)" : ""}...`
   );
+
+  let config: AnalysisConfig | null = null;
+  if (!backfillOnly) {
+    console.log("Loading framework + knowledge sources from Supabase...");
+    config = await loadAnalysisConfig();
+  }
+
   let count = 0;
   let written = 0;
   for await (const conversation of pullConversations({ limit, startEpochSeconds, endEpochSeconds })) {
@@ -71,7 +82,7 @@ async function runLive() {
     }
 
     console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
-    const analysis = await analyzeTranscript(conversation.messages);
+    const analysis = await analyzeTranscript(conversation.messages, config!);
     const result = await writeInteraction(conversation.id, conversation.messages, analysis, {
       startTimestamp: conversation.startTimestamp,
       tags: conversation.tags,

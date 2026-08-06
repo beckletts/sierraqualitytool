@@ -4,6 +4,8 @@ import { Login } from "./pages/Login";
 import { Queue } from "./pages/Queue";
 import { TranscriptDetail } from "./pages/TranscriptDetail";
 import { Insights } from "./pages/Insights";
+import { Settings } from "./pages/Settings";
+import { Admin } from "./pages/Admin";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -38,6 +40,22 @@ export default function App() {
           element={
             <RequireAuth>
               <Insights />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <Settings />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth>
+              <Admin />
             </RequireAuth>
           }
         />

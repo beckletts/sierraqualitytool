@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -15,6 +14,7 @@ import { supabase } from "../lib/supabaseClient";
 import { CHART_CATEGORICAL_1, CHART_INK, CHART_ORDINAL_BLUE, CHART_STATUS } from "../lib/chartPalette";
 import { COMPETENCY_LABELS, COMPETENCY_LEVELS, interactionDate } from "../lib/types";
 import type { Competency, Interaction } from "../lib/types";
+import { AppNav } from "../components/AppNav";
 
 const PRIORITY_META: Record<Interaction["intervention_priority"], { label: string; color: string }> = {
   hard_flag: { label: "Needs intervention", color: CHART_STATUS.critical },
@@ -113,8 +113,8 @@ export function Insights() {
   return (
     <div className="page-shell">
       <header className="page-header">
-        <Link to="/">&larr; Back to queue</Link>
         <h1>Insights</h1>
+        <AppNav />
       </header>
 
       <div className="insights-grid">
