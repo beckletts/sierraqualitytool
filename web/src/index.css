@@ -355,6 +355,11 @@ textarea {
   width: auto;
 }
 
+.settings-card-new {
+  border: 1px dashed var(--border);
+  background: #fbfbfd;
+}
+
 .chart-legend {
   display: flex;
   justify-content: center;
