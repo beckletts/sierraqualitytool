@@ -1,15 +1,12 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { Pool } from "pg";
 
-// No generated Database types yet (schema is hand-written SQL, not codegen'd) — untyped client.
-let client: SupabaseClient | null = null;
+let pool: Pool | null = null;
 
-export function getSupabase(): SupabaseClient {
-  if (!client) {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url) throw new Error("SUPABASE_URL is not set");
-    if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
-    client = createClient(url, key, { auth: { persistSession: false } });
+export function getPool(): Pool {
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) throw new Error("DATABASE_URL is not set");
+    pool = new Pool({ connectionString });
   }
-  return client;
+  return pool;
 }

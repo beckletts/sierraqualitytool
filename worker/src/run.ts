@@ -37,14 +37,14 @@ const endArg = args.find((a) => a.startsWith("--end="));
 async function runFixture() {
   const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "sample-transcript.json");
   const fixture = JSON.parse(readFileSync(fixturePath, "utf-8"));
-  console.log("Loading framework + knowledge sources from Supabase...");
+  console.log("Loading framework + knowledge sources from the database...");
   const config = await loadAnalysisConfig();
   console.log(`Analyzing fixture transcript ${fixture.sierra_conversation_id}...`);
   const analysis = await analyzeTranscript(fixture.messages, config);
   console.log(JSON.stringify(analysis, null, 2));
 
   const result = await writeInteraction(fixture.sierra_conversation_id, fixture.messages, analysis);
-  console.log(result.skipped ? "Already in Supabase, skipped." : "Written to Supabase.");
+  console.log(result.skipped ? "Already in the database, skipped." : "Written to the database.");
 }
 
 async function runLive() {
@@ -60,7 +60,7 @@ async function runLive() {
 
   let config: AnalysisConfig | null = null;
   if (!backfillOnly) {
-    console.log("Loading framework + knowledge sources from Supabase...");
+    console.log("Loading framework + knowledge sources from the database...");
     config = await loadAnalysisConfig();
   }
 
@@ -76,7 +76,7 @@ async function runLive() {
         customFields: conversation.customFields,
         device: conversation.device,
       });
-      console.log(`[${count}/${limit}] ${conversation.id}: ${result.updated ? "metadata backfilled" : "not in Supabase, skipped"}`);
+      console.log(`[${count}/${limit}] ${conversation.id}: ${result.updated ? "metadata backfilled" : "not in the database, skipped"}`);
       if (result.updated) written += 1;
       continue;
     }
