@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cookie": {
+      "type": "http",
+      "url": "https://portal.cookie.pearsondev.tech/mcp"
+    }
+  }
+}
