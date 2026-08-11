@@ -1,5 +1,11 @@
 import { callStructured } from "./claude.js";
-import { buildScoreAndExtractPrompt, buildVerifyClaimsPrompt, dedupeSources, type TranscriptMessage } from "./prompts.js";
+import {
+  buildScoreAndExtractPrompt,
+  buildVerifyClaimsPrompt,
+  citationsToSourceExcerpts,
+  dedupeSources,
+  type TranscriptMessage,
+} from "./prompts.js";
 import { SCORE_AND_EXTRACT_SCHEMA, VERIFY_CLAIMS_SCHEMA } from "./schemas.js";
 import { fetchAllSources } from "../sources/fetch.js";
 import type { Competency, CompetencyLevel } from "./framework.js";
@@ -84,8 +90,9 @@ export async function analyzeTranscript(messages: TranscriptMessage[], config: A
     return { competency_scores: scoreAndExtract.competency_scores, claims: [], intervention_priority: "none" };
   }
 
+  const citationSources = citationsToSourceExcerpts(messages);
   const sourcesPerClaim = await Promise.all(
-    claimsToVerify.map((claim) => fetchAllSources(claim.topic_keywords, config.sources))
+    claimsToVerify.map(async (claim) => [...citationSources, ...(await fetchAllSources(claim.topic_keywords, config.sources))])
   );
   const { sources: dedupedSources, refsPerClaim } = dedupeSources(sourcesPerClaim);
 
