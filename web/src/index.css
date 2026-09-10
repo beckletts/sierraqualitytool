@@ -1,13 +1,27 @@
-/* Placeholder palette — swap in real Pearson brand colors/logo before this goes in front of the review team. */
+/* Pearson brand palette.
+ *
+ * --brand is Amethyst (the interactive purple: buttons, links, active states)
+ * and --brand-dark is Pearson Purple (headings, hover, body text), which keeps
+ * the dominant colour on the page the core brand purple while interactive
+ * elements stay legible against white.
+ *
+ * The three flag colours are deliberately NOT from the brand palette: the
+ * approved palette has no red or green, and intervention priority has to read
+ * as red/amber/green at a glance for the queue to work. They are semantic state
+ * colours, used only on badges and chart status marks, never as decoration.
+ * Worth a design view before this goes wider.
+ */
 :root {
-  --brand: #6a2c91;
-  --brand-dark: #4a1d68;
+  --brand: #512eab; /* Amethyst */
+  --brand-dark: #0d004d; /* Pearson Purple */
+  --brand-light: #c1bfff; /* Light Purple */
+  --brand-mist: #edecf6; /* Mist Purple */
   --hard-flag: #c0392b;
   --soft-flag: #d68910;
   --none-flag: #1e8449;
-  --border: #e0e0e0;
-  --bg: #f7f7f9;
-  --text: #222;
+  --border: #c1bfff;
+  --bg: #edecf6;
+  --text: #0d004d;
 }
 
 * {
@@ -16,9 +30,16 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--brand-dark);
+  font-weight: 700;
 }
 
 button {
@@ -40,8 +61,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Outline rather than grey — the brand palette has no approved neutral for a
+   filled secondary button, and an outline reads as the lesser action anyway. */
 button.secondary {
-  background: #999;
+  background: white;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--brand-mist);
 }
 
 button.link-button {
@@ -156,8 +185,23 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* Chip-style toggles, shared by the date presets and the agent filter. */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filter-group-label {
+  font-size: 0.8rem;
+  color: #666;
+}
+
 .date-presets button.preset,
-.date-presets button.preset-active {
+.date-presets button.preset-active,
+.filter-group button.preset,
+.filter-group button.preset-active {
   background: white;
   color: var(--text);
   border: 1px solid var(--border);
@@ -165,7 +209,8 @@ textarea {
   font-size: 0.8rem;
 }
 
-.date-presets button.preset-active {
+.date-presets button.preset-active,
+.filter-group button.preset-active {
   background: var(--brand);
   color: white;
   border-color: var(--brand);
@@ -189,7 +234,7 @@ textarea {
 
 .tag-chip {
   display: inline-block;
-  background: #ece6f2;
+  background: var(--brand-mist);
   color: var(--brand-dark);
   border-radius: 10px;
   padding: 0.1rem 0.5rem;

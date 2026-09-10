@@ -23,6 +23,7 @@ export interface SourceExcerpt {
 
 export interface Interaction {
   id: string;
+  agent_id: string;
   sierra_conversation_id: string;
   transcript: TranscriptMessage[];
   pulled_at: string;
@@ -86,6 +87,25 @@ export const FLAG_LABELS: Record<FlagStatus, string> = {
   source_conflict: "Source conflict",
   fetch_failed: "Fetch failed",
 };
+
+/**
+ * A Sierra AI agent. Each one has its own Admin API token, which deliberately
+ * lives in the worker's environment rather than in this table — `token_env_var`
+ * names the variable, so the whole review team can maintain agents without
+ * anyone handling a credential.
+ */
+export interface Agent {
+  id: string;
+  sierra_agent_id: string;
+  name: string;
+  environment: string;
+  sierra_base_url: string;
+  sierra_org_id: string;
+  token_env_var: string;
+  enabled: boolean;
+  notes: string | null;
+  updated_at: string;
+}
 
 export interface KnowledgeSource {
   id: string;
