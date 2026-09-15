@@ -9,7 +9,7 @@ This is a bounded, off-Salesforce prototype (Supabase + a Node worker + a React 
 /worker    Node + TypeScript: pulls transcripts from Sierra, runs the Claude analysis, writes to Supabase
 /supabase  SQL migrations (schema + RLS)
 /web       React + TypeScript (Vite): the review UI
-/docs      solution design doc, the roadmap plan, and open questions
+/docs      solution design doc, the knowledge-corpus design, the roadmap plan, and open questions
 ```
 
 ## Prerequisites
@@ -161,6 +161,11 @@ publish dates. It also means `support.pearson.com` and Salesforce Knowledge are
 one source rather than two — so the divergence this tool is meant to catch is
 between Knowledge (= support.pearson.com) and the qualifications site plus its
 PDFs.
+
+[`docs/knowledge_corpus_design.md`](docs/knowledge_corpus_design.md) works
+through what follows from that: an indexed corpus rather than live fetches, the
+Knowledge-first ingestion order, and the access needed from OCTO and the
+qualifications-site content owners.
 
 ## 4. Web app
 ```
