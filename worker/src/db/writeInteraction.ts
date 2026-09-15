@@ -10,11 +10,13 @@ export interface ConversationMetadata {
 }
 
 /**
- * Writes an interaction + its claims. Dedupes on sierra_conversation_id so
- * reruns of the worker are idempotent — a conversation already present is
- * skipped rather than duplicated.
+ * Writes an interaction + its claims. Dedupes on (agent, sierra_conversation_id)
+ * so reruns of the worker are idempotent — a conversation already present is
+ * skipped rather than duplicated. The agent is part of the key because Sierra
+ * conversation IDs are only unique within an org.
  */
 export async function writeInteraction(
+  agentId: string,
   sierraConversationId: string,
   transcript: TranscriptMessage[],
   analysis: AnalysisResult,
@@ -22,17 +24,21 @@ export async function writeInteraction(
 ): Promise<{ skipped: boolean }> {
   const pool = getPool();
 
-  const existing = await pool.query("select id from interactions where sierra_conversation_id = $1", [sierraConversationId]);
+  const existing = await pool.query("select id from interactions where agent_id = $1 and sierra_conversation_id = $2", [
+    agentId,
+    sierraConversationId,
+  ]);
   if (existing.rows.length > 0) return { skipped: true };
 
   const conversationStartedAt = metadata.startTimestamp ? new Date(metadata.startTimestamp * 1000).toISOString() : null;
 
   const inserted = await pool.query(
     `insert into interactions
-       (sierra_conversation_id, transcript, competency_scores, intervention_priority, status, conversation_started_at, tags, custom_fields, device)
-     values ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)
+       (agent_id, sierra_conversation_id, transcript, competency_scores, intervention_priority, status, conversation_started_at, tags, custom_fields, device)
+     values ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
      returning id`,
     [
+      agentId,
       sierraConversationId,
       JSON.stringify(transcript),
       JSON.stringify(analysis.competency_scores),
@@ -64,13 +70,20 @@ export async function writeInteraction(
 }
 
 /**
- * Updates conversation_started_at/tags/custom_fields/device on an existing
- * row without touching competency_scores or claims — for backfilling
- * conversations pulled before those columns existed, with no re-analysis
- * and no Claude calls. No-ops (returns updated: false) if the conversation
- * isn't in the database yet — that's what a normal pull is for.
+ * Updates agent_id/conversation_started_at/tags/custom_fields/device on an
+ * existing row without touching competency_scores or claims — for backfilling
+ * conversations pulled before those columns existed, with no re-analysis and no
+ * Claude calls. No-ops (returns updated: false) if the conversation isn't in the
+ * database yet — that's what a normal pull is for.
+ *
+ * Matching is on the conversation ID alone, deliberately: this is the path that
+ * reassigns rows still pointing at the `unidentified` placeholder agent, so it
+ * cannot filter on the agent it is about to set. Whichever agent's export
+ * returned the conversation owns it, which holds as long as IDs don't collide
+ * across agents — true within an org.
  */
 export async function backfillMetadata(
+  agentId: string,
   sierraConversationId: string,
   metadata: ConversationMetadata
 ): Promise<{ updated: boolean }> {
@@ -79,10 +92,17 @@ export async function backfillMetadata(
 
   const result = await pool.query(
     `update interactions
-     set conversation_started_at = $1, tags = $2, custom_fields = $3, device = $4
-     where sierra_conversation_id = $5
+     set agent_id = $1, conversation_started_at = $2, tags = $3, custom_fields = $4, device = $5
+     where sierra_conversation_id = $6
      returning id`,
-    [conversationStartedAt, JSON.stringify(metadata.tags ?? []), JSON.stringify(metadata.customFields ?? {}), metadata.device ?? null, sierraConversationId]
+    [
+      agentId,
+      conversationStartedAt,
+      JSON.stringify(metadata.tags ?? []),
+      JSON.stringify(metadata.customFields ?? {}),
+      metadata.device ?? null,
+      sierraConversationId,
+    ]
   );
 
   return { updated: result.rows.length > 0 };

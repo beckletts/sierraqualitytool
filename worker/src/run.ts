@@ -6,6 +6,7 @@ import { analyzeTranscript, type AnalysisConfig } from "./analysis/pipeline.js";
 import { backfillMetadata, writeInteraction } from "./db/writeInteraction.js";
 import { pullConversations } from "./sierra.js";
 import { loadFrameworkText, loadSourceDomains } from "./config/loadConfig.js";
+import { loadAgentRecords, loadAgents } from "./config/agents.js";
 
 async function loadAnalysisConfig(): Promise<AnalysisConfig> {
   const [frameworkText, sources] = await Promise.all([loadFrameworkText(), loadSourceDomains()]);
@@ -33,17 +34,25 @@ const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : 10;
 const startArg = args.find((a) => a.startsWith("--start="));
 const endArg = args.find((a) => a.startsWith("--end="));
+const agentArg = args.find((a) => a.startsWith("--agent="))?.split("=")[1];
 
 async function runFixture() {
+  // The fixture never calls Sierra, so it needs an agent to file the result
+  // under but not that agent's token.
+  const [agent] = await loadAgentRecords(agentArg ? { only: agentArg } : {});
+  if (!agent) {
+    throw new Error("No enabled rows in `agents` — add a Sierra agent on the Settings page first.");
+  }
+
   const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "sample-transcript.json");
   const fixture = JSON.parse(readFileSync(fixturePath, "utf-8"));
   console.log("Loading framework + knowledge sources from the database...");
   const config = await loadAnalysisConfig();
-  console.log(`Analyzing fixture transcript ${fixture.sierra_conversation_id}...`);
+  console.log(`Analyzing fixture transcript ${fixture.sierra_conversation_id} as agent "${agent.name}"...`);
   const analysis = await analyzeTranscript(fixture.messages, config);
   console.log(JSON.stringify(analysis, null, 2));
 
-  const result = await writeInteraction(fixture.sierra_conversation_id, fixture.messages, analysis);
+  const result = await writeInteraction(agent.id, fixture.sierra_conversation_id, fixture.messages, analysis);
   console.log(result.skipped ? "Already in the database, skipped." : "Written to the database.");
 }
 
@@ -54,8 +63,10 @@ async function runLive() {
   const startEpochSeconds = parseTimestamp(startArg.split("=")[1], false);
   const endEpochSeconds = parseTimestamp(endArg.split("=")[1], true);
 
+  const agents = await loadAgents(agentArg ? { only: agentArg } : {});
+
   console.log(
-    `Pulling up to ${limit} conversations from Sierra, ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}${backfillOnly ? " (backfill-metadata mode — no Claude calls, no new rows)" : ""}...`
+    `Pulling up to ${limit} conversations per agent from ${agents.length} agent(s), ${new Date(startEpochSeconds * 1000).toISOString()} to ${new Date(endEpochSeconds * 1000).toISOString()}${backfillOnly ? " (backfill-metadata mode — no Claude calls, no new rows)" : ""}...`
   );
 
   let config: AnalysisConfig | null = null;
@@ -64,42 +75,61 @@ async function runLive() {
     config = await loadAnalysisConfig();
   }
 
-  let count = 0;
-  let written = 0;
-  for await (const conversation of pullConversations({ limit, startEpochSeconds, endEpochSeconds })) {
-    count += 1;
+  const summary: { agent: string; pulled: number; written: number }[] = [];
 
-    if (backfillOnly) {
-      const result = await backfillMetadata(conversation.id, {
+  for (const agent of agents) {
+    console.log(`\n=== ${agent.name} (${agent.sierraAgentId}, ${agent.environment}) ===`);
+    let count = 0;
+    let written = 0;
+
+    for await (const conversation of pullConversations({ agent, limit, startEpochSeconds, endEpochSeconds })) {
+      count += 1;
+
+      if (backfillOnly) {
+        const result = await backfillMetadata(agent.id, conversation.id, {
+          startTimestamp: conversation.startTimestamp,
+          tags: conversation.tags,
+          customFields: conversation.customFields,
+          device: conversation.device,
+        });
+        console.log(`[${count}/${limit}] ${conversation.id}: ${result.updated ? "metadata backfilled" : "not in the database, skipped"}`);
+        if (result.updated) written += 1;
+        continue;
+      }
+
+      console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
+      const analysis = await analyzeTranscript(conversation.messages, config!);
+      const result = await writeInteraction(agent.id, conversation.id, conversation.messages, analysis, {
         startTimestamp: conversation.startTimestamp,
         tags: conversation.tags,
         customFields: conversation.customFields,
         device: conversation.device,
       });
-      console.log(`[${count}/${limit}] ${conversation.id}: ${result.updated ? "metadata backfilled" : "not in the database, skipped"}`);
-      if (result.updated) written += 1;
-      continue;
+      if (result.skipped) {
+        console.log(`  already present, skipped`);
+      } else {
+        written += 1;
+        console.log(`  written (${analysis.intervention_priority}, ${analysis.claims.length} claims)`);
+      }
     }
 
-    console.log(`[${count}/${limit}] Analyzing conversation ${conversation.id}...`);
-    const analysis = await analyzeTranscript(conversation.messages, config!);
-    const result = await writeInteraction(conversation.id, conversation.messages, analysis, {
-      startTimestamp: conversation.startTimestamp,
-      tags: conversation.tags,
-      customFields: conversation.customFields,
-      device: conversation.device,
-    });
-    if (result.skipped) {
-      console.log(`  already present, skipped`);
-    } else {
-      written += 1;
-      console.log(`  written (${analysis.intervention_priority}, ${analysis.claims.length} claims)`);
-    }
+    summary.push({ agent: agent.name, pulled: count, written });
   }
+
+  console.log("");
+  for (const row of summary) {
+    console.log(
+      backfillOnly
+        ? `${row.agent}: pulled ${row.pulled}, backfilled metadata on ${row.written} existing row(s).`
+        : `${row.agent}: pulled ${row.pulled}, wrote ${row.written} new interaction(s).`
+    );
+  }
+  const totalPulled = summary.reduce((sum, row) => sum + row.pulled, 0);
+  const totalWritten = summary.reduce((sum, row) => sum + row.written, 0);
   console.log(
     backfillOnly
-      ? `Done. Pulled ${count}, backfilled metadata on ${written} existing row(s).`
-      : `Done. Pulled ${count}, wrote ${written} new interaction(s).`
+      ? `Done. Pulled ${totalPulled} across ${summary.length} agent(s), backfilled metadata on ${totalWritten} existing row(s).`
+      : `Done. Pulled ${totalPulled} across ${summary.length} agent(s), wrote ${totalWritten} new interaction(s).`
   );
 }
 

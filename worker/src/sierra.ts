@@ -1,4 +1,5 @@
 import type { TranscriptMessage } from "./analysis/prompts.js";
+import type { SierraAgent } from "./config/agents.js";
 
 export interface SierraConversation {
   id: string;
@@ -39,20 +40,17 @@ function sleep(ms: number): Promise<void> {
  * Paginates via the `cursor` field returned as `next_cursor`, and backs off with
  * jitter on 429. `start`/`end` are Unix epoch seconds (the window is fixed for
  * the whole pull; only `cursor` advances between pages).
+ *
+ * The agent carries its own base URL, org, ID and token — each Sierra agent has
+ * a separate token, and they may not all live in the same environment.
  */
 export async function* pullConversations(options: {
+  agent: SierraAgent;
   limit: number;
   startEpochSeconds: number;
   endEpochSeconds: number;
 }): AsyncGenerator<SierraConversation> {
-  const baseUrl = process.env.SIERRA_API_BASE_URL;
-  const token = process.env.SIERRA_API_TOKEN;
-  const orgId = process.env.SIERRA_ORG_ID;
-  const agentId = process.env.SIERRA_AGENT_ID;
-  if (!baseUrl) throw new Error("SIERRA_API_BASE_URL is not set");
-  if (!token) throw new Error("SIERRA_API_TOKEN is not set");
-  if (!orgId) throw new Error("SIERRA_ORG_ID is not set");
-  if (!agentId) throw new Error("SIERRA_AGENT_ID is not set");
+  const { baseUrl, orgId, sierraAgentId: agentId, token } = options.agent;
 
   let cursor: string | undefined;
   let remaining = options.limit;
