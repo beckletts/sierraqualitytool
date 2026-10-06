@@ -53,11 +53,34 @@ body {
   color: var(--text);
 }
 
-h1,
+/* Weight carries the hierarchy alongside size, per the brand's type rules —
+   all three were 700, which left size doing the work on its own. */
+h1 {
+  color: var(--brand-dark);
+  font-weight: 700;
+}
+
 h2,
 h3 {
   color: var(--brand-dark);
-  font-weight: 700;
+  font-weight: 600;
+}
+
+/* Keyboard focus.
+ *
+ * There was no focus styling at all, so keyboard users got whatever the browser
+ * chose — unreliable against a Mist page and invisible against an Amethyst
+ * button. One rule covers every interactive element.
+ *
+ * The ring is Amethyst and sits *outside* the element (outline-offset), so it
+ * lands on the page or card surface rather than on the control's own fill. That
+ * is what makes it work on a filled primary button as well as on a white input:
+ * 9.02:1 against white, 7.70:1 against the Mist page background. :focus-visible
+ * rather than :focus, so a mouse click does not leave a ring behind.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 button {
@@ -172,16 +195,34 @@ textarea {
   gap: 1rem;
 }
 
+.back-link {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--brand);
+}
+
+/* Left-aligned, like every other heading. The right-alignment that used to be
+   here was the one thing in this file breaking the brand's left-alignment rule
+   — though the actual cause was the flex order in TranscriptDetail, not this
+   property. Kept explicit so the intent is recorded. */
 .detail-heading {
-  text-align: right;
+  text-align: left;
 }
 
 .detail-heading h1 {
   margin: 0;
 }
 
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0.15rem 0 0;
+}
+
 .detail-date {
-  display: block;
   font-size: 0.85rem;
   color: var(--ink-muted);
 }
@@ -568,8 +609,14 @@ textarea {
   color: var(--ink-strong);
 }
 
+/* Quoted material, marked by indent and a rule rather than by italics: the
+   brand reserves italics for specific cases, and a full sentence of italic body
+   text is harder to read than the upright version. The curly quotes in
+   ClaimFlagRow already signal that it is a quotation. */
 .claim-text {
-  font-style: italic;
+  border-left: 3px solid var(--brand-light);
+  padding-left: 0.6rem;
+  margin: 0.3rem 0;
 }
 
 .source-list {

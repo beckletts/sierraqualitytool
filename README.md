@@ -1,4 +1,7 @@
-# Sierra Pre-Go-Live Quality Review
+# Overwatch — Sierra pre-go-live quality review
+
+The tool is called **Overwatch**. It had three other names scattered across the
+browser tab, the sign-in screen and this file; they are now all this one.
 
 Prototype tool for the CSX quality team to validate Sierra transcripts before go-live: score each transcript against Pearson's competency framework, cross-check factual claims against three verified sources, and review/sign off in a purpose-built UI. See [`docs/solution_design_sierra_qa.md`](docs/solution_design_sierra_qa.md) for the full design.
 
