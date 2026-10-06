@@ -1,4 +1,5 @@
-import type { TranscriptMessage } from "./analysis/prompts.js";
+import type { MessageCitation, TranscriptMessage } from "./analysis/prompts.js";
+import type { SierraAgent } from "./config/agents.js";
 
 export interface SierraConversation {
   id: string;
@@ -9,16 +10,46 @@ export interface SierraConversation {
   device: string | null;
 }
 
+interface SierraKnowledgeCitationEvent {
+  type: "knowledge_citations";
+  knowledge_citations: {
+    query: string;
+    results: { title: string; url?: string; chunks: string[] }[];
+  };
+}
+
 interface SierraExportResponse {
   conversations: {
     id: string;
-    messages: { author: "USER" | "AGENT"; text: string }[];
+    messages: { author: "USER" | "AGENT"; text: string; events?: SierraKnowledgeCitationEvent[] }[];
     start_timestamp: number;
     tags?: string[];
     custom_fields?: Record<string, unknown>;
     device?: string;
   }[];
   next_cursor?: string | null;
+}
+
+/**
+ * Flattens a message's knowledge_citations events into the source text Sierra's
+ * own agent actually cited — grounding for claim verification that doesn't
+ * depend on scraping external sites. Other event types (tag, tool_call) are
+ * irrelevant here and dropped. Returns undefined (not []) when there's nothing,
+ * so it's omitted from the JSON rather than cluttering every message.
+ */
+function extractCitations(events: SierraKnowledgeCitationEvent[] | undefined): MessageCitation[] | undefined {
+  if (!events || events.length === 0) return undefined;
+  const citations = events
+    .filter((e) => e.type === "knowledge_citations")
+    .flatMap((e) =>
+      e.knowledge_citations.results.map((r) => ({
+        query: e.knowledge_citations.query,
+        title: r.title,
+        url: r.url ?? null,
+        chunks: r.chunks,
+      }))
+    );
+  return citations.length > 0 ? citations : undefined;
 }
 
 const MAX_RETRIES = 5;
@@ -39,20 +70,17 @@ function sleep(ms: number): Promise<void> {
  * Paginates via the `cursor` field returned as `next_cursor`, and backs off with
  * jitter on 429. `start`/`end` are Unix epoch seconds (the window is fixed for
  * the whole pull; only `cursor` advances between pages).
+ *
+ * The agent carries its own base URL, org, ID and token — each Sierra agent has
+ * a separate token, and they may not all live in the same environment.
  */
 export async function* pullConversations(options: {
+  agent: SierraAgent;
   limit: number;
   startEpochSeconds: number;
   endEpochSeconds: number;
 }): AsyncGenerator<SierraConversation> {
-  const baseUrl = process.env.SIERRA_API_BASE_URL;
-  const token = process.env.SIERRA_API_TOKEN;
-  const orgId = process.env.SIERRA_ORG_ID;
-  const agentId = process.env.SIERRA_AGENT_ID;
-  if (!baseUrl) throw new Error("SIERRA_API_BASE_URL is not set");
-  if (!token) throw new Error("SIERRA_API_TOKEN is not set");
-  if (!orgId) throw new Error("SIERRA_ORG_ID is not set");
-  if (!agentId) throw new Error("SIERRA_AGENT_ID is not set");
+  const { baseUrl, orgId, sierraAgentId: agentId, token } = options.agent;
 
   let cursor: string | undefined;
   let remaining = options.limit;
@@ -63,6 +91,7 @@ export async function* pullConversations(options: {
     url.searchParams.set("end", String(options.endEpochSeconds));
     url.searchParams.set("limit", String(Math.min(remaining, MAX_PAGE_LIMIT)));
     url.searchParams.set("redacted", "true");
+    url.searchParams.set("include_events", "true");
     if (cursor) url.searchParams.set("cursor", cursor);
 
     const page = await fetchPageWithBackoff(url.toString(), token);
@@ -74,6 +103,7 @@ export async function* pullConversations(options: {
         messages: conversation.messages.map((m) => ({
           role: m.author === "AGENT" ? "agent" : "customer",
           text: m.text,
+          citations: extractCitations(m.events),
         })),
         startTimestamp: conversation.start_timestamp,
         tags: conversation.tags ?? [],

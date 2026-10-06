@@ -132,11 +132,24 @@ export function TranscriptDetail() {
 
   return (
     <div className="page-shell">
+      {/* The back link sits above the header rather than inside it. .page-header
+          is a space-between flex row, so while the link was the first child the
+          heading was pushed to the right edge — which is why this page's title
+          read as right-aligned no matter what text-align said. Every other page
+          puts its h1 first, and now so does this one. */}
+      <Link className="back-link" to="/">
+        &larr; Back to queue
+      </Link>
       <header className="page-header">
-        <Link to="/">&larr; Back to queue</Link>
+        {/* The h1 was the raw conversation ID, which told a reader nothing and
+            gave the page no heading. The ID is metadata — it belongs beside the
+            date, in the style already used for IDs in the queue. */}
         <div className="detail-heading">
-          <h1>{interaction.sierra_conversation_id}</h1>
-          <span className="detail-date">{new Date(interactionDate(interaction)).toLocaleString()}</span>
+          <h1>Conversation review</h1>
+          <p className="detail-meta">
+            <span className="conversation-id">{interaction.sierra_conversation_id}</span>
+            <span className="detail-date">{new Date(interactionDate(interaction)).toLocaleString()}</span>
+          </p>
         </div>
       </header>
 

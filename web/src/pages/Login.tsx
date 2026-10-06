@@ -23,8 +23,8 @@ export function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Sierra Quality Review</h1>
-        <p className="subtitle">Pre-go-live transcript review</p>
+        <h1>Overwatch</h1>
+        <p className="subtitle">Pre-go-live Sierra transcript review</p>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />

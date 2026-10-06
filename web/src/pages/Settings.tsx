@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
 import { COMPETENCY_LABELS, COMPETENCY_LEVELS } from "../lib/types";
-import type { Competency, CompetencyLevel, GuidelineRow, KnowledgeSource } from "../lib/types";
+import type { Agent, Competency, CompetencyLevel, GuidelineRow, KnowledgeSource } from "../lib/types";
 import { AppNav } from "../components/AppNav";
+
+/** Matches the worker's check in config/agents.ts — an env var name, never a token. */
+const ENV_VAR_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 function urlsToText(urls: string[]): string {
   return urls.join("\n");
@@ -186,6 +189,225 @@ function NewSourceCard({ onCreate }: NewSourceCardProps) {
   );
 }
 
+type AgentDraft = Omit<Agent, "id" | "updated_at">;
+
+interface AgentCardProps {
+  agent: Agent;
+  onSave: (id: string, updates: Partial<Agent>) => Promise<string | null>;
+  onDelete: (id: string) => Promise<void>;
+}
+
+function AgentCard({ agent, onSave, onDelete }: AgentCardProps) {
+  const [draft, setDraft] = useState<AgentDraft>({
+    sierra_agent_id: agent.sierra_agent_id,
+    name: agent.name,
+    environment: agent.environment,
+    sierra_base_url: agent.sierra_base_url,
+    sierra_org_id: agent.sierra_org_id,
+    token_env_var: agent.token_env_var,
+    enabled: agent.enabled,
+    notes: agent.notes,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedNote, setSavedNote] = useState(false);
+
+  function set<K extends keyof AgentDraft>(key: K, value: AgentDraft[K]) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    setError(null);
+    const problem = validateAgentDraft(draft);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setSaving(true);
+    const message = await onSave(agent.id, draft);
+    setSaving(false);
+    if (message) {
+      setError(message);
+      return;
+    }
+    setSavedNote(true);
+    setTimeout(() => setSavedNote(false), 2000);
+  }
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        `Remove "${agent.name}"? Its interactions reference it, so this only works if none have been pulled yet — otherwise disable it instead.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    await onDelete(agent.id);
+    setDeleting(false);
+  }
+
+  return (
+    <div className="settings-card">
+      <div className="settings-card-header">
+        <strong>{agent.name}</strong>
+        <label className="enabled-toggle">
+          <input type="checkbox" checked={draft.enabled} onChange={(e) => set("enabled", e.target.checked)} />
+          Enabled
+        </label>
+      </div>
+
+      <AgentFields draft={draft} set={set} />
+
+      <div className="edit-actions">
+        <button onClick={() => void handleSave()} disabled={saving || deleting}>
+          {saving ? "Saving..." : "Save"}
+        </button>
+        <button className="secondary" onClick={() => void handleDelete()} disabled={saving || deleting}>
+          {deleting ? "Removing..." : "Remove agent"}
+        </button>
+        {savedNote && <span className="muted-note">Saved.</span>}
+      </div>
+      {error && <span className="error-text">{error}</span>}
+    </div>
+  );
+}
+
+function validateAgentDraft(draft: AgentDraft): string | null {
+  if (!draft.name.trim()) return "Name is required.";
+  if (!draft.sierra_agent_id.trim()) return "Sierra agent ID is required.";
+  if (!draft.sierra_org_id.trim()) return "Sierra org ID is required.";
+  if (!draft.sierra_base_url.trim()) return "API base URL is required.";
+  if (!ENV_VAR_PATTERN.test(draft.token_env_var.trim())) {
+    return "Token env var must be the NAME of an environment variable — capitals, digits and underscores only (e.g. SIERRA_TOKEN_SUPPORT). Never paste the token itself here.";
+  }
+  return null;
+}
+
+/** Shared field set, so the edit and create cards can't drift apart. */
+function AgentFields({
+  draft,
+  set,
+}: {
+  draft: AgentDraft;
+  set: <K extends keyof AgentDraft>(key: K, value: AgentDraft[K]) => void;
+}) {
+  return (
+    <>
+      <label className="settings-field">
+        Name
+        <input type="text" value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="Qualifications support" />
+        <span className="field-hint">Shown in the queue, the agent filter and the insights charts.</span>
+      </label>
+
+      <label className="settings-field">
+        Sierra agent ID
+        <input type="text" value={draft.sierra_agent_id} onChange={(e) => set("sierra_agent_id", e.target.value)} />
+      </label>
+
+      <label className="settings-field">
+        Sierra org ID
+        <input type="text" value={draft.sierra_org_id} onChange={(e) => set("sierra_org_id", e.target.value)} />
+      </label>
+
+      <label className="settings-field">
+        Environment
+        <input type="text" value={draft.environment} onChange={(e) => set("environment", e.target.value)} placeholder="eu" />
+        <span className="field-hint">Which Sierra environment this agent lives in, e.g. eu or us. Labelling only.</span>
+      </label>
+
+      <label className="settings-field">
+        API base URL
+        <input
+          type="text"
+          value={draft.sierra_base_url}
+          onChange={(e) => set("sierra_base_url", e.target.value)}
+          placeholder="https://api.eu.sierra.ai"
+        />
+      </label>
+
+      <label className="settings-field">
+        Token env var
+        <input
+          type="text"
+          value={draft.token_env_var}
+          onChange={(e) => set("token_env_var", e.target.value)}
+          placeholder="SIERRA_TOKEN_SUPPORT"
+        />
+        <span className="field-hint">
+          The <em>name</em> of the environment variable holding this agent's Admin API token. The token itself belongs in the
+          worker's environment, never in this field — everything here is readable by the whole review team.
+        </span>
+      </label>
+
+      <label className="settings-field">
+        Notes
+        <textarea value={draft.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={2} />
+      </label>
+    </>
+  );
+}
+
+interface NewAgentCardProps {
+  onCreate: (agent: AgentDraft) => Promise<string | null>;
+}
+
+function NewAgentCard({ onCreate }: NewAgentCardProps) {
+  const empty: AgentDraft = {
+    sierra_agent_id: "",
+    name: "",
+    environment: "eu",
+    sierra_base_url: "https://api.eu.sierra.ai",
+    sierra_org_id: "",
+    token_env_var: "",
+    enabled: true,
+    notes: null,
+  };
+  const [draft, setDraft] = useState<AgentDraft>(empty);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function set<K extends keyof AgentDraft>(key: K, value: AgentDraft[K]) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleCreate() {
+    setError(null);
+    const problem = validateAgentDraft(draft);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setSaving(true);
+    const message = await onCreate(draft);
+    setSaving(false);
+    if (message) {
+      setError(message);
+      return;
+    }
+    setDraft(empty);
+  }
+
+  return (
+    <div className="settings-card settings-card-new">
+      <div className="settings-card-header">
+        <strong>Add Sierra agent</strong>
+      </div>
+
+      <AgentFields draft={draft} set={set} />
+
+      {error && <span className="error-text">{error}</span>}
+
+      <div className="edit-actions">
+        <button onClick={() => void handleCreate()} disabled={saving}>
+          {saving ? "Adding..." : "Add agent"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface CompetencyCardProps {
   competency: Competency;
   rows: GuidelineRow[];
@@ -236,6 +458,7 @@ function CompetencyCard({ competency, rows, onSave }: CompetencyCardProps) {
 
 export function Settings() {
   const { session } = useAuth();
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
   const [guidelines, setGuidelines] = useState<GuidelineRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,15 +468,63 @@ export function Settings() {
   }, []);
 
   async function loadAll() {
-    const [{ data: sourceRows, error: sourceError }, { data: guidelineRows, error: guidelineError }] = await Promise.all([
+    const [
+      { data: agentRows, error: agentError },
+      { data: sourceRows, error: sourceError },
+      { data: guidelineRows, error: guidelineError },
+    ] = await Promise.all([
+      supabase.from("agents").select("*").order("name"),
       supabase.from("knowledge_sources").select("*").order("domain"),
       supabase.from("competency_guidelines").select("*"),
     ]);
+    if (agentError) console.error(agentError);
     if (sourceError) console.error(sourceError);
     if (guidelineError) console.error(guidelineError);
+    setAgents((agentRows ?? []) as Agent[]);
     setSources((sourceRows ?? []) as KnowledgeSource[]);
     setGuidelines((guidelineRows ?? []) as GuidelineRow[]);
     setLoading(false);
+  }
+
+  async function saveAgent(id: string, updates: Partial<Agent>): Promise<string | null> {
+    if (!session) return "Not signed in.";
+    const { error } = await supabase
+      .from("agents")
+      .update({ ...updates, updated_at: new Date().toISOString(), updated_by: session.user.id })
+      .eq("id", id);
+    if (error) {
+      console.error(error);
+      return error.message;
+    }
+    setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)).sort((a, b) => a.name.localeCompare(b.name)));
+    return null;
+  }
+
+  async function createAgent(agent: AgentDraft): Promise<string | null> {
+    if (!session) return "Not signed in.";
+    const { data, error } = await supabase
+      .from("agents")
+      .insert({ ...agent, updated_by: session.user.id })
+      .select()
+      .single();
+    if (error) {
+      console.error(error);
+      return error.message;
+    }
+    setAgents((prev) => [...prev, data as Agent].sort((a, b) => a.name.localeCompare(b.name)));
+    return null;
+  }
+
+  async function deleteAgent(id: string) {
+    const { error } = await supabase.from("agents").delete().eq("id", id);
+    if (error) {
+      console.error(error);
+      // The foreign key from interactions is the usual cause, and disabling is
+      // the right answer there — deleting would take the history with it.
+      window.alert(`Could not remove agent: ${error.message}\n\nIf it has interactions, disable it instead.`);
+      return;
+    }
+    setAgents((prev) => prev.filter((a) => a.id !== id));
   }
 
   async function saveSource(id: string, updates: Partial<KnowledgeSource>) {
@@ -319,6 +590,21 @@ export function Settings() {
         <h1>Settings</h1>
         <AppNav />
       </header>
+
+      <section>
+        <h2>Sierra agents</h2>
+        <p className="muted-note">
+          The AI agents Overwatch reviews. Each one has its own Admin API token, which lives in the worker's environment — this
+          page holds only the name of the variable to read it from, so no credential is stored here. Disabled agents are skipped
+          by the worker but keep their reviewed history.
+        </p>
+        <div className="settings-grid">
+          {agents.map((agent) => (
+            <AgentCard key={agent.id} agent={agent} onSave={saveAgent} onDelete={deleteAgent} />
+          ))}
+          <NewAgentCard onCreate={createAgent} />
+        </div>
+      </section>
 
       <section>
         <h2>Knowledge sources</h2>

@@ -23,6 +23,7 @@ export interface SourceExcerpt {
 
 export interface Interaction {
   id: string;
+  agent_id: string;
   sierra_conversation_id: string;
   transcript: TranscriptMessage[];
   pulled_at: string;
@@ -87,6 +88,25 @@ export const FLAG_LABELS: Record<FlagStatus, string> = {
   fetch_failed: "Fetch failed",
 };
 
+/**
+ * A Sierra AI agent. Each one has its own Admin API token, which deliberately
+ * lives in the worker's environment rather than in this table — `token_env_var`
+ * names the variable, so the whole review team can maintain agents without
+ * anyone handling a credential.
+ */
+export interface Agent {
+  id: string;
+  sierra_agent_id: string;
+  name: string;
+  environment: string;
+  sierra_base_url: string;
+  sierra_org_id: string;
+  token_env_var: string;
+  enabled: boolean;
+  notes: string | null;
+  updated_at: string;
+}
+
 export interface KnowledgeSource {
   id: string;
   domain: string;
@@ -102,6 +122,105 @@ export interface GuidelineRow {
   level: CompetencyLevel;
   descriptor: string;
   updated_at: string;
+}
+
+/**
+ * One HTTP attempt from a source-reachability probe run.
+ *
+ * `verdict` is a heuristic; `http_status`, `body_sample` and `findings` are the
+ * evidence it was derived from, which is why the Admin page shows them rather
+ * than just the verdict. When a claim in the queue reads `fetch_failed`, this
+ * is where the reason lives.
+ */
+export type ProbeVerdict =
+  | "ok"
+  | "js_shell"
+  | "empty_body"
+  | "http_error"
+  | "blocked_by_proxy"
+  | "dns_failure"
+  | "tls_failure"
+  | "timeout"
+  | "transport_error"
+  | "not_configured";
+
+export type ProbeTargetKind =
+  | "control"
+  | "robots"
+  | "sitemap"
+  | "search"
+  | "seed_url"
+  | "reference_page"
+  | "reference_pdf"
+  | "knowledge_api";
+
+/** A row of `latest_source_probe_run()` — the run's columns repeat on every probe row. */
+export interface ProbeRow {
+  run_id: string;
+  started_at: string;
+  finished_at: string | null;
+  ran_from: string;
+  notes: string | null;
+  target_kind: ProbeTargetKind;
+  domain: string | null;
+  label: string;
+  url: string;
+  verdict: ProbeVerdict;
+  http_status: number | null;
+  content_type: string | null;
+  bytes: number | null;
+  elapsed_ms: number | null;
+  detail: string;
+  body_sample: string | null;
+  findings: Record<string, unknown>;
+}
+
+export const PROBE_VERDICT_LABELS: Record<ProbeVerdict, string> = {
+  ok: "Reachable",
+  js_shell: "JavaScript shell",
+  empty_body: "Empty response",
+  http_error: "Refused by the site",
+  blocked_by_proxy: "Blocked in transit",
+  dns_failure: "Did not resolve",
+  tls_failure: "TLS failure",
+  timeout: "Timed out",
+  transport_error: "Transport error",
+  not_configured: "Not configured",
+};
+
+export const PROBE_TARGET_KIND_LABELS: Record<ProbeTargetKind, string> = {
+  control: "Controls",
+  robots: "robots.txt",
+  sitemap: "Sitemaps",
+  search: "Site search",
+  seed_url: "Seed URLs",
+  reference_page: "Reference pages",
+  reference_pdf: "Reference PDFs",
+  knowledge_api: "Knowledge API",
+};
+
+/**
+ * Which verdicts are the app's problem to fix versus the source's. A blocked
+ * or unresolved host is an egress or URL fix; a JavaScript shell means the
+ * source needs an API rather than a fetch; a site refusal is a conversation
+ * with the site owner. Grouping them this way keeps the Admin page from
+ * reading as one undifferentiated wall of red.
+ */
+export function probeSeverity(verdict: ProbeVerdict): "ok" | "ours" | "theirs" | "unknown" {
+  switch (verdict) {
+    case "ok":
+      return "ok";
+    case "blocked_by_proxy":
+    case "tls_failure":
+    case "dns_failure":
+    case "not_configured":
+      return "ours";
+    case "http_error":
+    case "js_shell":
+      return "theirs";
+    default:
+      return "unknown";
+  }
 }
 
 export interface AdminUserRow {

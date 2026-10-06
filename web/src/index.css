@@ -1,13 +1,45 @@
-/* Placeholder palette — swap in real Pearson brand colors/logo before this goes in front of the review team. */
+/* Pearson brand palette.
+ *
+ * --brand is Amethyst (the interactive purple: buttons, links, active states)
+ * and --brand-dark is Pearson Purple (headings, hover, body text), which keeps
+ * the dominant colour on the page the core brand purple while interactive
+ * elements stay legible against white.
+ *
+ * The three flag colours are the one documented exception to the brand
+ * palette: the approved palette has no red or green, and intervention priority
+ * has to read as red/amber/green at a glance for the queue to work. The
+ * approved accents do not substitute — Amber #FFCE00 is ~1.5:1 on white, and
+ * fuchsia-for-bad is not a mapping anyone reads instinctively. So they stay,
+ * restricted to state on badges, card borders and chart marks, never
+ * decoration, and never the only carrier of meaning: each one always sits
+ * beside its own label.
+ *
+ * --soft-flag was darkened from #d68910 (2.82:1 with white text, below AA) to
+ * a value that clears 3:1 as a chart mark and takes Pearson Purple text at
+ * 5.41:1 as a badge fill. All three now match CHART_STATUS in
+ * lib/chartPalette.ts exactly; they previously did not, so the same state wore
+ * different colours depending on the component.
+ *
+ * The --ink-* scale exists because the brand has no approved grey. Each one is
+ * a tint of Pearson Purple over white, so muted text reads as the brand rather
+ * than as an off-palette neutral, and each clears AA for the size it is used
+ * at. They replace the #444/#666/#888/#999 greys this file used to carry.
+ */
 :root {
-  --brand: #6a2c91;
-  --brand-dark: #4a1d68;
-  --hard-flag: #c0392b;
-  --soft-flag: #d68910;
-  --none-flag: #1e8449;
-  --border: #e0e0e0;
-  --bg: #f7f7f9;
-  --text: #222;
+  --brand: #512eab; /* Amethyst */
+  --brand-dark: #0d004d; /* Pearson Purple */
+  --brand-light: #c1bfff; /* Light Purple */
+  --brand-mist: #edecf6; /* Mist Purple */
+  --hard-flag: #c0392b; /* white text 5.44:1 · mark 5.44:1 */
+  --soft-flag: #c27a0b; /* Pearson Purple text 5.41:1 · mark 3.45:1 */
+  --none-flag: #1e8449; /* white text 4.72:1 · mark 4.72:1 */
+  --ink-strong: #25195f; /* 15.18:1 — secondary body copy */
+  --ink-muted: #564d82; /* 7.56:1 — labels, captions, metadata */
+  --ink-subtle: #696191; /* 5.65:1 — the lightest text that still clears AA */
+  --border: #c1bfff; /* dividers and decorative rules only (1.73:1) */
+  --border-strong: #7a739d; /* 4.41:1 — the edge of anything interactive */
+  --bg: #edecf6;
+  --text: #0d004d;
 }
 
 * {
@@ -16,9 +48,39 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Weight carries the hierarchy alongside size, per the brand's type rules —
+   all three were 700, which left size doing the work on its own. */
+h1 {
+  color: var(--brand-dark);
+  font-weight: 700;
+}
+
+h2,
+h3 {
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
+/* Keyboard focus.
+ *
+ * There was no focus styling at all, so keyboard users got whatever the browser
+ * chose — unreliable against a Mist page and invisible against an Amethyst
+ * button. One rule covers every interactive element.
+ *
+ * The ring is Amethyst and sits *outside* the element (outline-offset), so it
+ * lands on the page or card surface rather than on the control's own fill. That
+ * is what makes it work on a filled primary button as well as on a white input:
+ * 9.02:1 against white, 7.70:1 against the Mist page background. :focus-visible
+ * rather than :focus, so a mouse click does not leave a ring behind.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 button {
@@ -40,8 +102,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Outline rather than grey — the brand palette has no approved neutral for a
+   filled secondary button, and an outline reads as the lesser action anyway. */
 button.secondary {
-  background: #999;
+  background: white;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--brand-mist);
 }
 
 button.link-button {
@@ -51,13 +121,18 @@ button.link-button {
   text-decoration: underline;
 }
 
+/* --border-strong, not --border: a field's edge is the boundary of a UI
+   component, so WCAG 1.4.11 wants 3:1 against the surface. Light Purple is
+   1.73:1 on white, which made the inputs on Settings genuinely hard to find.
+   Light Purple stays on dividers and decorative rules, where nothing depends
+   on seeing it. */
 input,
 select,
 textarea {
   font-family: inherit;
   font-size: 0.9rem;
   padding: 0.4rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   width: 100%;
 }
@@ -78,7 +153,7 @@ textarea {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 6px rgba(13, 0, 77, 0.12);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -92,7 +167,7 @@ textarea {
 
 .subtitle {
   margin: 0 0 0.5rem;
-  color: #666;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
@@ -120,18 +195,36 @@ textarea {
   gap: 1rem;
 }
 
+.back-link {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--brand);
+}
+
+/* Left-aligned, like every other heading. The right-alignment that used to be
+   here was the one thing in this file breaking the brand's left-alignment rule
+   — though the actual cause was the flex order in TranscriptDetail, not this
+   property. Kept explicit so the intent is recorded. */
 .detail-heading {
-  text-align: right;
+  text-align: left;
 }
 
 .detail-heading h1 {
   margin: 0;
 }
 
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0.15rem 0 0;
+}
+
 .detail-date {
-  display: block;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .header-nav a {
@@ -156,16 +249,34 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* Chip-style toggles, shared by the date presets and the agent filter. */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filter-group-label {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+/* Same reasoning as the form fields: an unselected filter chip is a control,
+   and its edge is the only thing that shows where it is. */
 .date-presets button.preset,
-.date-presets button.preset-active {
+.date-presets button.preset-active,
+.filter-group button.preset,
+.filter-group button.preset-active {
   background: white;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
 }
 
-.date-presets button.preset-active {
+.date-presets button.preset-active,
+.filter-group button.preset-active {
   background: var(--brand);
   color: white;
   border-color: var(--brand);
@@ -176,7 +287,7 @@ textarea {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .custom-range input {
@@ -189,7 +300,7 @@ textarea {
 
 .tag-chip {
   display: inline-block;
-  background: #ece6f2;
+  background: var(--brand-mist);
   color: var(--brand-dark);
   border-radius: 10px;
   padding: 0.1rem 0.5rem;
@@ -215,12 +326,12 @@ textarea {
 
 .conversation-id {
   font-size: 0.7rem;
-  color: #999;
+  color: var(--ink-muted);
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
 }
 
 .muted-note {
-  color: #666;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
@@ -251,7 +362,7 @@ textarea {
 
 .stat-label {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .meter-row {
@@ -277,7 +388,7 @@ textarea {
 
 .meter-label {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
   white-space: nowrap;
 }
 
@@ -339,7 +450,7 @@ textarea {
 
 .field-hint {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--ink-subtle);
   font-weight: 400;
 }
 
@@ -355,9 +466,12 @@ textarea {
   width: auto;
 }
 
+/* The dashed edge already says "add one"; #fbfbfd was an off-palette near-white
+   doing no work, so the card just stays white like its siblings. The dash needs
+   to be seen, so it takes the perceivable border. */
 .settings-card-new {
-  border: 1px dashed var(--border);
-  background: #fbfbfd;
+  border: 1px dashed var(--border-strong);
+  background: white;
 }
 
 .chart-legend {
@@ -414,10 +528,15 @@ textarea {
   background: var(--hard-flag);
 }
 
+/* Pearson Purple text, not the white the other two badges use: no amber light
+   enough to read as amber can carry white text at AA. Dark text on amber gets
+   5.41:1 and keeps the colour recognisable, which is the whole point of it. */
 .badge-soft_flag,
 .badge-flag-unverifiable,
-.badge-flag-fetch_failed {
+.badge-flag-fetch_failed,
+.badge-probe-theirs {
   background: var(--soft-flag);
+  color: var(--brand-dark);
 }
 
 .badge-none,
@@ -482,16 +601,22 @@ textarea {
 
 .competency-level {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .rationale {
   font-size: 0.85rem;
-  color: #444;
+  color: var(--ink-strong);
 }
 
+/* Quoted material, marked by indent and a rule rather than by italics: the
+   brand reserves italics for specific cases, and a full sentence of italic body
+   text is harder to read than the upright version. The curly quotes in
+   ClaimFlagRow already signal that it is a quotation. */
 .claim-text {
-  font-style: italic;
+  border-left: 3px solid var(--brand-light);
+  padding-left: 0.6rem;
+  margin: 0.3rem 0;
 }
 
 .source-list {
@@ -502,7 +627,7 @@ textarea {
 }
 
 .source-failed {
-  color: #999;
+  color: var(--ink-muted);
 }
 
 .edit-block {
@@ -520,7 +645,7 @@ textarea {
 
 .confidence {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .sign-off-panel {
@@ -532,4 +657,107 @@ textarea {
 .sign-off-panel.signed-off {
   color: var(--none-flag);
   font-weight: 600;
+}
+
+/* ── Source reachability diagnostics (Admin) ──────────────────────────────
+ *
+ * The three probe states reuse the existing semantic state colours rather than
+ * introducing new ones, and they mean something specific: "ours" is a fix on
+ * our side of the wire (egress, credentials, a wrong URL), "theirs" is a
+ * property of the source itself (it refused us, or it has no HTML to read).
+ * Separating them is the point of the panel — a reviewer needs to know whose
+ * problem an unverified claim is, not just that it failed.
+ */
+.admin-section {
+  margin-bottom: 2.5rem;
+}
+
+.admin-section > h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.badge-probe-ok {
+  background: var(--none-flag);
+}
+
+.badge-probe-ours {
+  background: var(--hard-flag);
+}
+
+/* .badge-probe-theirs shares the amber rule with the other soft-flag badges
+   above — the dark-text-on-amber fix is now the rule rather than this panel's
+   local exception. */
+
+/* Amethyst rather than a state colour: an unclassified result is a prompt to
+   read the evidence, not a severity. 9.02:1 against white. */
+.badge-probe-unknown {
+  background: var(--brand);
+}
+
+.probe-callout {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background: var(--brand-mist);
+  border-left: 4px solid var(--brand);
+}
+
+.probe-callout-warn {
+  border-left-color: var(--soft-flag);
+}
+
+.probe-callout-ok {
+  border-left-color: var(--none-flag);
+}
+
+.probe-group {
+  margin-bottom: 1.5rem;
+}
+
+.probe-group > h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+
+.probe-label {
+  font-weight: 600;
+}
+
+.probe-detail {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+.probe-findings {
+  margin: 0.4rem 0 0.2rem;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+.probe-evidence {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--brand-mist);
+  border-radius: 6px;
+}
+
+.probe-url,
+.probe-evidence pre {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.probe-evidence pre {
+  margin: 0.5rem 0 0;
+  max-height: 14rem;
+  overflow: auto;
 }

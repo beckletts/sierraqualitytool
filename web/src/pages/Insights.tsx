@@ -11,10 +11,12 @@ import {
   YAxis,
 } from "recharts";
 import { supabase } from "../lib/supabaseClient";
-import { CHART_CATEGORICAL_1, CHART_INK, CHART_ORDINAL_BLUE, CHART_STATUS } from "../lib/chartPalette";
+import { CHART_CATEGORICAL_1, CHART_INK, CHART_ORDINAL, CHART_STATUS } from "../lib/chartPalette";
 import { COMPETENCY_LABELS, COMPETENCY_LEVELS, interactionDate } from "../lib/types";
 import type { Competency, Interaction } from "../lib/types";
 import { AppNav } from "../components/AppNav";
+import { AgentFilter, ALL_AGENTS } from "../components/AgentFilter";
+import { useAgents } from "../lib/useAgents";
 
 const PRIORITY_META: Record<Interaction["intervention_priority"], { label: string; color: string }> = {
   hard_flag: { label: "Needs intervention", color: CHART_STATUS.critical },
@@ -37,7 +39,7 @@ function OrderedCompetencyLegend() {
     <ul className="chart-legend">
       {COMPETENCY_LEVELS.map((level, i) => (
         <li key={level}>
-          <span className="legend-swatch" style={{ background: CHART_ORDINAL_BLUE[i] }} />
+          <span className="legend-swatch" style={{ background: CHART_ORDINAL[i] }} />
           {level}
         </li>
       ))}
@@ -46,17 +48,26 @@ function OrderedCompetencyLegend() {
 }
 
 export function Insights() {
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [allInteractions, setAllInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [agentFilter, setAgentFilter] = useState<string>(ALL_AGENTS);
+  const { agents } = useAgents();
 
   useEffect(() => {
     void (async () => {
       const { data, error } = await supabase.from("interactions").select("*");
       if (error) console.error(error);
-      setInteractions((data ?? []) as Interaction[]);
+      setAllInteractions((data ?? []) as Interaction[]);
       setLoading(false);
     })();
   }, []);
+
+  // Every chart below reads from this, so the agent filter applies once here
+  // rather than in each aggregation.
+  const interactions = useMemo(
+    () => (agentFilter === ALL_AGENTS ? allInteractions : allInteractions.filter((i) => i.agent_id === agentFilter)),
+    [allInteractions, agentFilter]
+  );
 
   const volumeByDay = useMemo(() => {
     const counts = new Map<string, number>();
@@ -117,6 +128,12 @@ export function Insights() {
         <AppNav />
       </header>
 
+      {agents.length > 1 && (
+        <div className="filter-bar">
+          <AgentFilter agents={agents} selected={agentFilter} onSelect={setAgentFilter} />
+        </div>
+      )}
+
       <div className="insights-grid">
         <div className="chart-card">
           <h2>Volume over time</h2>
@@ -165,7 +182,7 @@ export function Insights() {
               <Tooltip contentStyle={{ borderColor: CHART_INK.gridline, fontSize: 13 }} />
               <Legend content={<OrderedCompetencyLegend />} />
               {COMPETENCY_LEVELS.map((level, i) => (
-                <Bar key={level} dataKey={level} stackId="levels" fill={CHART_ORDINAL_BLUE[i]} maxBarSize={48} />
+                <Bar key={level} dataKey={level} stackId="levels" fill={CHART_ORDINAL[i]} maxBarSize={48} />
               ))}
             </BarChart>
           </ResponsiveContainer>

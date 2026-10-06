@@ -5,6 +5,8 @@ import type { Claim, Interaction, InterventionPriority } from "../lib/types";
 import { COMPETENCY_LABELS, interactionDate } from "../lib/types";
 import { SignOffProgress } from "../components/SignOffProgress";
 import { AppNav } from "../components/AppNav";
+import { AgentFilter, ALL_AGENTS } from "../components/AgentFilter";
+import { agentNamesById, useAgents } from "../lib/useAgents";
 
 const PRIORITY_RANK: Record<InterventionPriority, number> = { hard_flag: 0, soft_flag: 1, none: 2 };
 const PRIORITY_LABELS: Record<InterventionPriority, string> = {
@@ -48,6 +50,10 @@ export function Queue() {
   const [customEnd, setCustomEnd] = useState(() => toDayInputValue(new Date()));
   const [search, setSearch] = useState("");
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
+  const [agentFilter, setAgentFilter] = useState<string>(ALL_AGENTS);
+  const { agents } = useAgents();
+  const agentNames = useMemo(() => agentNamesById(agents), [agents]);
+  const showAgentColumn = agents.length > 1;
 
   function toggleTags(id: string) {
     setExpandedTags((prev) => {
@@ -110,9 +116,16 @@ export function Queue() {
     return { start, end };
   }, [datePreset, customStart, customEnd]);
 
+  // Scoped by agent but not by date or search, so the sign-off progress tracks
+  // the selected agent's whole backlog rather than whatever is on screen.
+  const agentScoped = useMemo(
+    () => (agentFilter === ALL_AGENTS ? interactions : interactions.filter((i) => i.agent_id === agentFilter)),
+    [interactions, agentFilter]
+  );
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return interactions.filter((interaction) => {
+    return agentScoped.filter((interaction) => {
       if (dateCutoff) {
         const t = new Date(interactionDate(interaction)).getTime();
         if (t < dateCutoff.start || t > dateCutoff.end) return false;
@@ -124,7 +137,7 @@ export function Queue() {
       if ((claimsByInteraction[interaction.id]?.text ?? "").toLowerCase().includes(query)) return true;
       return false;
     });
-  }, [interactions, dateCutoff, search, claimsByInteraction]);
+  }, [agentScoped, dateCutoff, search, claimsByInteraction]);
 
   const sorted = useMemo(
     () =>
@@ -145,9 +158,10 @@ export function Queue() {
         <AppNav />
       </header>
 
-      <SignOffProgress interactions={interactions} />
+      <SignOffProgress interactions={agentScoped} />
 
       <div className="filter-bar">
+        <AgentFilter agents={agents} selected={agentFilter} onSelect={setAgentFilter} />
         <div className="date-presets">
           {DATE_PRESETS.map((preset) => (
             <button
@@ -180,6 +194,7 @@ export function Queue() {
           <tr>
             <th>Priority</th>
             <th>Conversation</th>
+            {showAgentColumn && <th>Agent</th>}
             <th>Tags</th>
             {Object.values(COMPETENCY_LABELS).map((label) => (
               <th key={label}>{label}</th>
@@ -206,6 +221,7 @@ export function Queue() {
                   <Link to={`/interactions/${interaction.id}`}>{new Date(interactionDate(interaction)).toLocaleString()}</Link>
                   <div className="conversation-id">{interaction.sierra_conversation_id}</div>
                 </td>
+                {showAgentColumn && <td>{agentNames[interaction.agent_id] ?? "Unknown agent"}</td>}
                 <td className="tags-cell">
                   {visibleTags.map((tag) => (
                     <span key={tag} className="tag-chip">
