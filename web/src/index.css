@@ -5,21 +5,39 @@
  * the dominant colour on the page the core brand purple while interactive
  * elements stay legible against white.
  *
- * The three flag colours are deliberately NOT from the brand palette: the
- * approved palette has no red or green, and intervention priority has to read
- * as red/amber/green at a glance for the queue to work. They are semantic state
- * colours, used only on badges and chart status marks, never as decoration.
- * Worth a design view before this goes wider.
+ * The three flag colours are the one documented exception to the brand
+ * palette: the approved palette has no red or green, and intervention priority
+ * has to read as red/amber/green at a glance for the queue to work. The
+ * approved accents do not substitute — Amber #FFCE00 is ~1.5:1 on white, and
+ * fuchsia-for-bad is not a mapping anyone reads instinctively. So they stay,
+ * restricted to state on badges, card borders and chart marks, never
+ * decoration, and never the only carrier of meaning: each one always sits
+ * beside its own label.
+ *
+ * --soft-flag was darkened from #d68910 (2.82:1 with white text, below AA) to
+ * a value that clears 3:1 as a chart mark and takes Pearson Purple text at
+ * 5.41:1 as a badge fill. All three now match CHART_STATUS in
+ * lib/chartPalette.ts exactly; they previously did not, so the same state wore
+ * different colours depending on the component.
+ *
+ * The --ink-* scale exists because the brand has no approved grey. Each one is
+ * a tint of Pearson Purple over white, so muted text reads as the brand rather
+ * than as an off-palette neutral, and each clears AA for the size it is used
+ * at. They replace the #444/#666/#888/#999 greys this file used to carry.
  */
 :root {
   --brand: #512eab; /* Amethyst */
   --brand-dark: #0d004d; /* Pearson Purple */
   --brand-light: #c1bfff; /* Light Purple */
   --brand-mist: #edecf6; /* Mist Purple */
-  --hard-flag: #c0392b;
-  --soft-flag: #d68910;
-  --none-flag: #1e8449;
-  --border: #c1bfff;
+  --hard-flag: #c0392b; /* white text 5.44:1 · mark 5.44:1 */
+  --soft-flag: #c27a0b; /* Pearson Purple text 5.41:1 · mark 3.45:1 */
+  --none-flag: #1e8449; /* white text 4.72:1 · mark 4.72:1 */
+  --ink-strong: #25195f; /* 15.18:1 — secondary body copy */
+  --ink-muted: #564d82; /* 7.56:1 — labels, captions, metadata */
+  --ink-subtle: #696191; /* 5.65:1 — the lightest text that still clears AA */
+  --border: #c1bfff; /* dividers and decorative rules only (1.73:1) */
+  --border-strong: #7a739d; /* 4.41:1 — the edge of anything interactive */
   --bg: #edecf6;
   --text: #0d004d;
 }
@@ -80,13 +98,18 @@ button.link-button {
   text-decoration: underline;
 }
 
+/* --border-strong, not --border: a field's edge is the boundary of a UI
+   component, so WCAG 1.4.11 wants 3:1 against the surface. Light Purple is
+   1.73:1 on white, which made the inputs on Settings genuinely hard to find.
+   Light Purple stays on dividers and decorative rules, where nothing depends
+   on seeing it. */
 input,
 select,
 textarea {
   font-family: inherit;
   font-size: 0.9rem;
   padding: 0.4rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   width: 100%;
 }
@@ -107,7 +130,7 @@ textarea {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 6px rgba(13, 0, 77, 0.12);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -121,7 +144,7 @@ textarea {
 
 .subtitle {
   margin: 0 0 0.5rem;
-  color: #666;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
@@ -160,7 +183,7 @@ textarea {
 .detail-date {
   display: block;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .header-nav a {
@@ -195,16 +218,18 @@ textarea {
 
 .filter-group-label {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
+/* Same reasoning as the form fields: an unselected filter chip is a control,
+   and its edge is the only thing that shows where it is. */
 .date-presets button.preset,
 .date-presets button.preset-active,
 .filter-group button.preset,
 .filter-group button.preset-active {
   background: white;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
 }
@@ -221,7 +246,7 @@ textarea {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .custom-range input {
@@ -260,12 +285,12 @@ textarea {
 
 .conversation-id {
   font-size: 0.7rem;
-  color: #999;
+  color: var(--ink-muted);
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
 }
 
 .muted-note {
-  color: #666;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
@@ -296,7 +321,7 @@ textarea {
 
 .stat-label {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .meter-row {
@@ -322,7 +347,7 @@ textarea {
 
 .meter-label {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
   white-space: nowrap;
 }
 
@@ -384,7 +409,7 @@ textarea {
 
 .field-hint {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--ink-subtle);
   font-weight: 400;
 }
 
@@ -400,9 +425,12 @@ textarea {
   width: auto;
 }
 
+/* The dashed edge already says "add one"; #fbfbfd was an off-palette near-white
+   doing no work, so the card just stays white like its siblings. The dash needs
+   to be seen, so it takes the perceivable border. */
 .settings-card-new {
-  border: 1px dashed var(--border);
-  background: #fbfbfd;
+  border: 1px dashed var(--border-strong);
+  background: white;
 }
 
 .chart-legend {
@@ -459,10 +487,15 @@ textarea {
   background: var(--hard-flag);
 }
 
+/* Pearson Purple text, not the white the other two badges use: no amber light
+   enough to read as amber can carry white text at AA. Dark text on amber gets
+   5.41:1 and keeps the colour recognisable, which is the whole point of it. */
 .badge-soft_flag,
 .badge-flag-unverifiable,
-.badge-flag-fetch_failed {
+.badge-flag-fetch_failed,
+.badge-probe-theirs {
   background: var(--soft-flag);
+  color: var(--brand-dark);
 }
 
 .badge-none,
@@ -527,12 +560,12 @@ textarea {
 
 .competency-level {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .rationale {
   font-size: 0.85rem;
-  color: #444;
+  color: var(--ink-strong);
 }
 
 .claim-text {
@@ -547,7 +580,7 @@ textarea {
 }
 
 .source-failed {
-  color: #999;
+  color: var(--ink-muted);
 }
 
 .edit-block {
@@ -565,7 +598,7 @@ textarea {
 
 .confidence {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--ink-muted);
 }
 
 .sign-off-panel {
@@ -605,15 +638,9 @@ textarea {
   background: var(--hard-flag);
 }
 
-/* Pearson Purple text, not the white the other badges use: white on this amber
-   is 2.82:1, which fails WCAG AA for text this size, while Pearson Purple on it
-   is 6.62:1. The pre-existing .badge-soft_flag and .badge-flag-* rules above
-   have the same problem and are left alone here rather than restyled as a side
-   effect of this panel. */
-.badge-probe-theirs {
-  background: var(--soft-flag);
-  color: var(--brand-dark);
-}
+/* .badge-probe-theirs shares the amber rule with the other soft-flag badges
+   above — the dark-text-on-amber fix is now the rule rather than this panel's
+   local exception. */
 
 /* Amethyst rather than a state colour: an unclassified result is a prompt to
    read the evidence, not a severity. 9.02:1 against white. */

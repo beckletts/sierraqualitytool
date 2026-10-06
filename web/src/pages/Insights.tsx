@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { supabase } from "../lib/supabaseClient";
-import { CHART_CATEGORICAL_1, CHART_INK, CHART_ORDINAL_BLUE, CHART_STATUS } from "../lib/chartPalette";
+import { CHART_CATEGORICAL_1, CHART_INK, CHART_ORDINAL, CHART_STATUS } from "../lib/chartPalette";
 import { COMPETENCY_LABELS, COMPETENCY_LEVELS, interactionDate } from "../lib/types";
 import type { Competency, Interaction } from "../lib/types";
 import { AppNav } from "../components/AppNav";
@@ -39,7 +39,7 @@ function OrderedCompetencyLegend() {
     <ul className="chart-legend">
       {COMPETENCY_LEVELS.map((level, i) => (
         <li key={level}>
-          <span className="legend-swatch" style={{ background: CHART_ORDINAL_BLUE[i] }} />
+          <span className="legend-swatch" style={{ background: CHART_ORDINAL[i] }} />
           {level}
         </li>
       ))}
@@ -182,7 +182,7 @@ export function Insights() {
               <Tooltip contentStyle={{ borderColor: CHART_INK.gridline, fontSize: 13 }} />
               <Legend content={<OrderedCompetencyLegend />} />
               {COMPETENCY_LEVELS.map((level, i) => (
-                <Bar key={level} dataKey={level} stackId="levels" fill={CHART_ORDINAL_BLUE[i]} maxBarSize={48} />
+                <Bar key={level} dataKey={level} stackId="levels" fill={CHART_ORDINAL[i]} maxBarSize={48} />
               ))}
             </BarChart>
           </ResponsiveContainer>
