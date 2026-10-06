@@ -77,12 +77,9 @@ the automated rating for free.
 and human can be compared, or (b) check that escalations were appropriate and
 the handoff was handled well. Different builds.
 
-**11. Knowledge mismatch — confirming the reading.**
-Taken as: compare the three verified sources (Pearson knowledge base,
-qualifications site, JCQ) **against each other** and surface where they have
-drifted out of sync, independent of anything a bot said. That's a bigger and
-more useful feature than the existing per-claim drift check, and useful to the
-knowledge owners on its own. Confirming this is the intent before it's built.
+*(Question 11 is answered — see below. Numbers are never reused, so a gap means
+a question was closed rather than renumbered, and references elsewhere stay
+valid.)*
 
 **12. What is the priority on repeat contacts, and is the constraint accepted?**
 It's the one row left blank on the wishlist, and also the most constrained:
@@ -105,3 +102,29 @@ belongs to whoever owns the Sierra go-live call.
   environment.
 - **Is there a handoff signal in the data?** Yes — conversation tags, which
   Overwatch already stores. This is what unblocked containment.
+- **Knowledge mismatch — confirming the reading** *(was question 11)*.
+  Confirmed, October 2026: *"knowledge can be flagged as different between
+  systems and I want to catch that"*, with qualifications.pearson.com and
+  support.pearson.com both required, JCQ nice-to-have, and the PDF guidance on
+  the qualifications site that has no Salesforce equivalent explicitly in
+  scope.
+
+  Answering it changed the feature's shape in three ways, now carried in
+  [`knowledge_corpus_design.md`](knowledge_corpus_design.md) and Phase 4 of the
+  roadmap:
+  - **Two systems, not three.** `support.pearson.com` *is* Salesforce Knowledge
+    behind Experience Cloud, so the comparison is Knowledge against the
+    qualifications site and its PDFs.
+  - **An indexed corpus, not live fetches**, because a divergence report has to
+    be reproducible and because "every topic both systems cover" is a query over
+    a list.
+  - **Knowledge-first ingestion**, because the site publishes an estimated
+    30,000–35,000 PDFs and divergence is only meaningful where both systems
+    cover a topic.
+
+  It also raised new questions of its own, tracked in that design note rather
+  than duplicated here: the real PDF count, how many are un-OCRed scans,
+  whether the qualifications support pages are server-rendered, whether the
+  deployed environment can reach the sources at all, and the retrieval-layer
+  choice. The source reachability diagnostic (`npm run probe`) answers the
+  first four in one run from the deployed environment.
